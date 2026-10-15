@@ -97,6 +97,7 @@ h1 { font-size: 18px; margin: 0; letter-spacing: .02em; }
 .draw .rb2 { stroke: #d2691e; }
 .draw .rb3 { stroke: #8b4513; }
 .draw .rd { fill: #b22222; }
+.draw .ring { fill: none; stroke: var(--ink); stroke-width: 1.2; }
 .draw .ldr { stroke: var(--ink); stroke-width: .7; }
 .draw .bl { font-size: 12.5px; font-weight: 600; }
 .draw .bl.small { font-weight: 400; font-size: 11px; fill: var(--muted); }

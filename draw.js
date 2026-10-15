@@ -176,10 +176,10 @@
     s += `<polyline class="rb" points="${F.P([[p.C + p.S - 0.25, yb - c], [p.C + p.S, yb - c], [B - c, p.D2 - c], [B - c, p.D2 - 0.25]])}"/>`;
     s += `<polyline class="rb" points="${F.P([[c, p.D2 - 0.2], [c, c], [B - c, c], [B - c, c + 0.2]])}"/>`;
     // T1 / T2 dots
-    let dots = '';
-    for (let y = yb + 0.2; y < p.H - 0.05; y += 0.25) { dots += `<circle class="rd" cx="${F.X(p.C + c)}" cy="${F.Y(y)}" r="2.2"/><circle class="rd" cx="${F.X(backX(y) - c)}" cy="${F.Y(y)}" r="2.2"/>`; }
+    let dots = '', t1 = null, t2 = null;
+    for (let y = yb + 0.2; y < p.H - 0.05; y += 0.25) { t1 = [p.C + c, y]; dots += `<circle class="rd" cx="${F.X(p.C + c)}" cy="${F.Y(y)}" r="2.2"/><circle class="rd" cx="${F.X(backX(y) - c)}" cy="${F.Y(y)}" r="2.2"/>`; }
     for (let x = 0.15; x < B - 0.05; x += 0.2) { dots += `<circle class="rd" cx="${F.X(x)}" cy="${F.Y(c + 0.03)}" r="2.2"/>`; }
-    for (let x = p.C + p.S + 0.1; x < B - 0.05; x += 0.2) { const yt = p.D2 + p.D1 * (B - x) / Math.max(p.E, 1e-6); dots += `<circle class="rd" cx="${F.X(x)}" cy="${F.Y(yt - c - 0.03)}" r="2.2"/>`; }
+    for (let x = p.C + p.S + 0.1; x < B - 0.05; x += 0.2) { const yt = p.D2 + p.D1 * (B - x) / Math.max(p.E, 1e-6); t2 = [x, yt - c - 0.03]; dots += `<circle class="rd" cx="${F.X(x)}" cy="${F.Y(yt - c - 0.03)}" r="2.2"/>`; }
     s += dots;
     // weep hole
     const wy = Math.min(yb + 0.25, p.H - 0.2);
@@ -191,10 +191,12 @@
     if (L2 > 0) s += lab(backX(yb + L2 * 0.6) - 2 * c, yb + L2 * 0.6, backX(yb + L2 * 0.6) + 0.35, yb + L2 * 0.6 + 0.1, 'S2');
     if (L3 > 0) s += lab(backX(yb + L3 * 0.4) - 2.8 * c, yb + L3 * 0.4, backX(yb + L3 * 0.4) + 0.35, yb + L3 * 0.4 - 0.05, 'S3');
     s += lab(p.C + c, yb + g.h * 0.45, p.C - 0.25, yb + g.h * 0.45 + 0.05, 'S8', 'end');
-    s += lab(p.C + c, p.H - 0.2, p.C - 0.25, p.H - 0.08, 'T1', 'end');
+    const ring = d => `<circle class="ring" cx="${F.X(d[0])}" cy="${F.Y(d[1])}" r="6"/>`;
+    const toward = (d, tx, ty) => { const dx = F.X(tx) - F.X(d[0]), dy = F.Y(ty) - F.Y(d[1]), L = Math.hypot(dx, dy) || 1; return [d[0] + (dx / L) * 6 / F.s, d[1] - (dy / L) * 6 / F.s]; };
+    if (t1) { const tp = [p.C - 0.25, t1[1] + 0.1]; s += ring(t1) + lab(...toward(t1, ...tp), ...tp, 'T1', 'end'); }
     s += lab((p.C + p.S + B) / 2, p.D2 + p.D1 / 2 - c, (p.C + p.S + B) / 2 + 0.15, yb + 0.35, 'S4');
     s += lab(B - 0.25, c, B + 0.12, -0.2, 'S5', 'start');
-    s += lab(B - 0.3, p.D2 - c - 0.03, B + 0.15, p.D2 + 0.12, 'T2');
+    if (t2) { const tp = [B + 0.15, p.D2 + 0.12]; s += ring(t2) + lab(...toward(t2, ...tp), ...tp, 'T2'); }
     s += `<text class="bl small" x="${F.X(backX(wy)) + 8}" y="${F.Y(wy) + 4}">洩水孔</text>`;
     // ---- dimensions ----
     // top T
