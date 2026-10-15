@@ -239,7 +239,7 @@
         ['(11) 止滑榫尺寸 Kd', p.Kd], ['(12) 止滑榫位置 Kc', p.Kc], ['(13) 趾版覆土 Df', p.Df], ['(14) 牆前回填 Y', g.Y]]
         .map(([a, b]) => `<tr><td>${a} (m)</td><td>${n(b)}</td></tr>`).join('')}
       <tr><td>(15) 背填坡度</td><td>1 : ${p.n}</td></tr></tbody></table></div></div>
-    <div class="dimimg"><div class="dimmask" role="img" aria-label="擋土牆設計尺寸示意圖"></div><img class="dimprint" src="wall-dims.png" alt=""></div></div>
+    <div class="dimimg"><div class="dimmask" role="img" aria-label="擋土牆設計尺寸示意圖"></div><img class="dimprint" src="wall-dims-v2.png" alt=""></div></div>
     <h3>2.2 常時，穩定分析結果</h3>${sumTable(N, 6)}
     <h3>2.3 地震時，穩定分析結果</h3>${sumTable(Q, 3)}
     <h3>2.4 擋土牆配筋設計</h3>${barTable()}
@@ -326,5 +326,20 @@
     document.documentElement.style.setProperty('--topbar-h', (fixed ? t.offsetHeight + 16 : 16) + 'px');
   }
   window.addEventListener('resize', setTop);
+  // theme toggle: auto -> light -> dark
+  const TH = ['auto', 'light', 'dark'], THL = { auto: '◐ 自動', light: '☀ 淺色', dark: '☾ 深色' };
+  let theme = 'auto';
+  try { theme = localStorage.getItem('rw-theme') || 'auto'; } catch (e) {}
+  const applyTheme = () => {
+    if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('btnTheme').textContent = THL[theme];
+  };
+  document.getElementById('btnTheme').onclick = () => {
+    theme = TH[(TH.indexOf(theme) + 1) % 3];
+    try { localStorage.setItem('rw-theme', theme); } catch (e) {}
+    applyTheme();
+  };
+  applyTheme();
   buildForm(); run(); setTop();
 })();

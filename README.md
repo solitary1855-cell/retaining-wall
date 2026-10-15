@@ -18,7 +18,7 @@
 | `style.css` | 樣式（含 RWD、深色模式、列印） |
 | `calc.js` | 計算核心（可於 Node.js 載入測試） |
 | `draw.js` | 擋土牆實際尺寸圖、載重示意圖（SVG，隨輸入更新） |
-| `wall-dims.png` | 計算書 2.1 擋土牆設計尺寸示意圖（固定圖片） |
+| `wall-dims-v2.png` | 計算書 2.1 擋土牆設計尺寸示意圖（固定圖片） |
 | `app.js` | 介面、計算書產生 |
 | `.nojekyll` | 讓 GitHub Pages 直接提供靜態檔 |
 
