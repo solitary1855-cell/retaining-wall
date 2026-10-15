@@ -162,39 +162,13 @@
     const kp = keyPoly(p); if (kp) s += `<polygon points="${F.P(kp)}" fill="url(#pConc)" class="conc"/>`;
     // leveling concrete
     s += `<rect x="${F.X(-0.1)}" y="${F.Y(0)}" width="${F.X(B + 0.1) - F.X(-0.1)}" height="4" class="lev"/>`;
-    // ---- rebar ----
-    const sb = (x1, y1, x2, y2, cls = 'rb') => `<line class="${cls}" x1="${F.X(x1)}" y1="${F.Y(y1)}" x2="${F.X(x2)}" y2="${F.Y(y2)}"/>`;
     const backX = y => p.C + p.T + (p.S - p.T) * (p.H - y) / g.h; // 牆背 x at y
-    // S1 back face full height + hook into base
-    s += `<polyline class="rb" points="${F.P([[backX(p.H - c) - c, p.H - c], [backX(yb) - c, yb], [backX(c) - c, c], [backX(c) - c - 0.25, c]])}"/>`;
-    const L2 = p.bars.S2.L, L3 = p.bars.S3.L;
-    if (L2 > 0) s += `<polyline class="rb rb2" points="${F.P([[backX(yb + L2) - 2 * c, yb + L2], [backX(yb) - 2 * c, yb], [backX(c) - 2 * c, c + 0.02]])}"/>`;
-    if (L3 > 0) s += `<polyline class="rb rb3" points="${F.P([[backX(yb + L3) - 2.8 * c, yb + L3], [backX(yb) - 2.8 * c, yb], [backX(c) - 2.8 * c, c + 0.04]])}"/>`;
-    // S8 front face
-    s += `<polyline class="rb" points="${F.P([[p.C + c, p.H - c], [p.C + c, c], [p.C + c + 0.2, c]])}"/>`;
-    // S4 heel top, S5 bottom
-    s += `<polyline class="rb" points="${F.P([[p.C + p.S - 0.25, yb - c], [p.C + p.S, yb - c], [B - c, p.D2 - c], [B - c, p.D2 - 0.25]])}"/>`;
-    s += `<polyline class="rb" points="${F.P([[c, p.D2 - 0.2], [c, c], [B - c, c], [B - c, c + 0.2]])}"/>`;
-    // T1 / T2 dots
-    let dots = '';
-    for (let y = yb + 0.2; y < p.H - 0.05; y += 0.25) { dots += `<circle class="rd" cx="${F.X(p.C + c)}" cy="${F.Y(y)}" r="2.2"/><circle class="rd" cx="${F.X(backX(y) - c)}" cy="${F.Y(y)}" r="2.2"/>`; }
-    for (let x = 0.15; x < B - 0.05; x += 0.2) { dots += `<circle class="rd" cx="${F.X(x)}" cy="${F.Y(c + 0.03)}" r="2.2"/>`; }
-    for (let x = p.C + p.S + 0.1; x < B - 0.05; x += 0.2) { const yt = p.D2 + p.D1 * (B - x) / Math.max(p.E, 1e-6); dots += `<circle class="rd" cx="${F.X(x)}" cy="${F.Y(yt - c - 0.03)}" r="2.2"/>`; }
-    s += dots;
     // weep hole
     const wy = Math.min(yb + 0.25, p.H - 0.2);
     s += `<line class="weep" x1="${F.X(p.C - 0.05)}" y1="${F.Y(wy - 0.04)}" x2="${F.X(backX(wy) + 0.05)}" y2="${F.Y(wy)}"/>`;
     // labels
     const lab = (x, y, tx, ty, t, anchor = 'start') => `<line class="ldr" x1="${F.X(x)}" y1="${F.Y(y)}" x2="${F.X(tx)}" y2="${F.Y(ty)}"/><text class="bl" x="${F.X(tx) + (anchor === 'start' ? 3 : -3)}" y="${F.Y(ty) + 4}" text-anchor="${anchor}">${t}</text>`;
     const rx = B + 0.12 * L;
-    s += lab(backX(p.H - 0.25) - c, p.H - 0.25, rx * 0.55 + backX(p.H - 0.25) * 0.45 + 0.1, p.H - 0.12, 'S1');
-    if (L2 > 0) s += lab(backX(yb + L2 * 0.6) - 2 * c, yb + L2 * 0.6, backX(yb + L2 * 0.6) + 0.35, yb + L2 * 0.6 + 0.1, 'S2');
-    if (L3 > 0) s += lab(backX(yb + L3 * 0.4) - 2.8 * c, yb + L3 * 0.4, backX(yb + L3 * 0.4) + 0.35, yb + L3 * 0.4 - 0.05, 'S3');
-    s += lab(p.C + c, yb + g.h * 0.45, p.C - 0.25, yb + g.h * 0.45 + 0.05, 'S8', 'end');
-    s += lab(p.C + c, p.H - 0.2, p.C - 0.25, p.H - 0.08, 'T1', 'end');
-    s += lab((p.C + p.S + B) / 2, p.D2 + p.D1 / 2 - c, (p.C + p.S + B) / 2 + 0.15, yb + 0.35, 'S4');
-    s += lab(B - 0.25, c, B + 0.12, -0.2, 'S5', 'start');
-    s += lab(B - 0.3, p.D2 - c - 0.03, B + 0.15, p.D2 + 0.12, 'T2');
     s += `<text class="bl small" x="${F.X(backX(wy)) + 8}" y="${F.Y(wy) + 4}">洩水孔</text>`;
     // ---- dimensions ----
     // top T
@@ -220,13 +194,6 @@
     // Y / Df at toe
     const xy = -0.06 * L - 0.04;
     s += dimV(F, xy, 0, g.Y, 'Y=' + f2(g.Y), 1);
-    // S2/S3 lengths on right of stem
-    const xL = B + 0.3 * L;
-    if (L2 > 0 || L3 > 0) {
-      s += ext(F, backX(yb), yb, xL + 0.05, yb);
-      if (L2 > 0) s += ext(F, backX(yb + L2), yb + L2, xL + 0.05, yb + L2) + dimV(F, xL, yb, yb + L2, 'L2=' + f2(L2), 1);
-      if (L3 > 0) s += ext(F, backX(yb + L3), yb + L3, xL - 0.12, yb + L3) + dimV(F, xL - 0.17, yb, yb + L3, 'L3=' + f2(L3), 1);
-    }
     s += `<text class="cap" x="${F.W - 8}" y="18" text-anchor="end">單位：m　η = ${(g.eta).toFixed(3)}</text>`;
     return s + '</svg>';
   }
