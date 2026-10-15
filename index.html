@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>懸臂式擋土牆分析設計</title>
+<meta name="description" content="懸臂式擋土牆穩定分析與配筋設計（公路橋梁設計規範、建築物基礎構造設計規範、112年混凝土結構設計規範）">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <div>
+      <h1>懸臂式擋土牆分析設計</h1>
+      <p class="sub">穩定分析 · 地盤承載 · USD 配筋</p>
+    </div>
+  </div>
+  <div class="actions">
+    <button id="btnPrint" class="btn">列印計算書</button>
+    <button id="btnSave" class="btn ghost">匯出參數</button>
+    <label class="btn ghost" for="fileLoad">匯入參數</label>
+    <input type="file" id="fileLoad" accept=".json" hidden>
+    <button id="btnReset" class="btn ghost">重設</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="input" class="on">輸入</button>
+  <button role="tab" data-tab="result">結果</button>
+  <button role="tab" data-tab="report">計算書</button>
+</nav>
+
+<main class="layout">
+  <section id="pane-input" class="pane input-pane on" aria-label="輸入參數">
+    <form id="form" autocomplete="off"></form>
+    <p class="legend"><span class="sw"></span>可輸入欄位，修改後即時重算</p>
+  </section>
+
+  <div class="right">
+  <section id="pane-result" class="pane result-pane" aria-label="分析結果">
+    <div id="verdict" class="verdict"></div>
+    <div class="figs">
+      <div class="card">
+        <div class="card-h"><h2>擋土牆實際尺寸圖</h2></div>
+        <div id="dims" class="figure"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>載重示意圖</h2>
+          <div class="seg" role="group" aria-label="載重狀況"><button data-mode="n" class="on">常時</button><button data-mode="e">地震時</button></div>
+        </div>
+        <div id="section" class="figure"></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h2>常時穩定</h2><div id="sumN"></div></div>
+      <div class="card"><h2>地震時穩定</h2><div id="sumE"></div></div>
+    </div>
+    <div class="card"><h2>配筋檢核</h2><div id="sumRC"></div></div>
+  </section>
+
+  <section id="pane-report" class="pane report-pane" aria-label="計算書">
+    <h2 class="report-title">計算書</h2>
+    <article id="report" class="report"></article>
+  </section>
+  </div>
+</main>
+
+<footer class="foot">
+  依據：公路橋梁設計規範 6.2 節、建築物基礎構造設計規範（112 年版）式 4.3-1／表 4.3-1、建築物混凝土結構設計規範（112 年版）。
+  計算結果僅供設計參考，須由專業技師簽證負責。
+</footer>
+
+<script src="calc.js"></script>
+<script src="draw.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

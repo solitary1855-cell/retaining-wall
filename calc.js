@@ -1,0 +1,244 @@
+/* 懸臂式擋土牆分析與設計 — 計算核心（與 Excel 試算表邏輯一致） */
+(function (root) {
+  const R = d => d * Math.PI / 180, D = r => r * 180 / Math.PI;
+  const sin = x => Math.sin(R(x)), cos = x => Math.cos(R(x)), tan = x => Math.tan(R(x));
+
+  // 建築物基礎構造設計規範(112) 表4.3-1：[Nc, Nq, Nγ]
+  const NTAB = [[5.3,1.0,0],[5.3,1.1,0],[5.3,1.1,0],[5.3,1.2,0],[5.3,1.3,0],[5.3,1.4,0],[5.3,1.5,0],[5.3,1.6,0],
+    [5.3,1.7,0],[5.3,1.8,0],[5.3,1.9,0],[5.5,2.1,0],[5.8,2.2,0],[6.0,2.4,0],[6.2,2.5,1.1],[6.5,2.7,1.2],[6.7,2.9,1.3],
+    [7.0,3.1,1.5],[7.3,3.4,1.6],[7.6,3.6,1.8],[7.9,3.9,2.0],[8.2,4.2,2.2],[8.6,4.5,2.4],[9.0,4.8,2.7],[9.4,5.2,3.0],
+    [9.9,5.6,3.3],[10.4,6.0,3.6],[10.9,6.5,4.0],[11.4,7.1,4.4],[13.2,8.3,5.4],[15.3,9.8,6.6],[17.9,11.7,8.4],
+    [20.9,14.1,10.6],[24.7,17.0,13.7],[29.3,20.8,17.8],[35.1,25.5,23.2],[42.2,31.6,30.5],[51.2,39.6,41.4],
+    [62.5,49.8,57.6],[77.0,63.4,80.0],[95.7,81.2,114.0]];
+  const BARS = { 10: 0.7133, 13: 1.267, 16: 1.986, 19: 2.865, 22: 3.871, 25: 5.067, 29: 6.469, 32: 8.143, 36: 10.07 };
+  const CODES = {
+    hw: { name: '公路橋梁設計規範(範例版)', lfn: 1.69, lfe: 1.3, pb: 0.9, pv: 0.85, s8: 0.0018, t1: 0.0025, t2: 0.0018 },
+    c112: { name: '112年混凝土結構設計規範', lfn: 1.6, lfe: 1.2, pb: 0.9, pv: 0.75, s8: 0.0015, t1: 0.0025, t2: 0.0018 }
+  };
+
+  const DEFAULTS = {
+    id: 'RW-1',
+    gB: 1.91, phiB: 30, cB: 0, gF: 1.97, phiF: 29, cF: 1, gC: 2.4, gW: 1.0,
+    qs: 1.0, hw1r: 1 / 3, hw2: 0, wt: true,
+    fc: 280, fy: 4200, code: 'hw', kh: 0.16, kv: 0.08,
+    fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
+    cover: 7.5, deltaR: 2 / 3, kpm: 'rankine', deltaP: 0, kpOvr: null, kpeOvr: null,
+    T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
+    bars: {
+      S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
+      S4: { D: 16, s: 20 }, S5: { D: 16, s: 30 }, S8: { D: 19, s: 30 }, T1: { D: 19, s: 30 }, T2: { D: 19, s: 30 }
+    }
+  };
+
+  function coulombKa(phi, delta, theta, alpha) {
+    return cos(phi - theta) ** 2 / (cos(theta) ** 2 * cos(delta + theta) *
+      (1 + Math.sqrt(Math.max(0, sin(phi + delta) * sin(phi - alpha)) / (cos(delta + theta) * cos(theta - alpha)))) ** 2);
+  }
+  function moKae(phi, delta, theta, alpha, psi) {
+    return cos(phi - theta - psi) ** 2 / (cos(psi) * cos(theta) ** 2 * cos(delta + theta + psi) *
+      (1 + Math.sqrt(Math.max(0, sin(phi + delta) * sin(phi - psi - alpha)) / (cos(delta + theta + psi) * cos(theta - alpha)))) ** 2);
+  }
+  function coulombKp(phi, delta, theta, alpha) {
+    return cos(phi + theta) ** 2 / (cos(theta) ** 2 * cos(delta - theta) *
+      (1 - Math.sqrt(sin(phi + delta) * sin(phi + alpha) / (cos(delta - theta) * cos(alpha - theta)))) ** 2);
+  }
+  function moKpe(phi, delta, psi) {
+    return cos(phi - psi) ** 2 / (cos(psi) * cos(delta + psi) *
+      (1 - Math.sqrt(Math.max(0, sin(phi + delta) * sin(phi - psi)) / cos(delta + psi))) ** 2);
+  }
+
+  function compute(inp) {
+    const p = Object.assign({}, inp);
+    const o = { p };
+    const cf = CODES[p.code] || CODES.hw;
+    o.cf = cf;
+    // geometry
+    const g = o.g = {};
+    g.h = p.H - p.D1 - p.D2; g.B = p.C + p.S + p.E; g.eta = (p.S - p.T) / g.h; g.Y = p.Df + p.D2;
+    g.Ws = g.B - p.C - p.T;
+    const B = g.B, h = g.h;
+    o.hw1 = p.hw1r * p.H;
+    o.rhoMin = p.code === 'hw' ? 14 / p.fy : Math.max(0.8 * Math.sqrt(p.fc) / p.fy, 14 / p.fy);
+
+    // ---------- 常時 ----------
+    const N = o.n = {};
+    N.phi = p.phiB; N.delta = p.deltaR * p.phiB; N.theta = D(Math.atan(g.eta));
+    N.alpha = p.n === 0 ? 0 : D(Math.atan(1 / p.n));
+    N.Ka = coulombKa(N.phi, N.delta, N.theta, N.alpha);
+    N.H1 = Math.max(0, p.H - o.hw1);
+    const gB = p.gB, gp = p.gB - p.gW, hw1 = o.hw1;
+    N.Ip = 0.5 * gB * N.H1 ** 2 + gB * N.H1 * hw1 + 0.5 * gp * hw1 ** 2;
+    N.Ipm = 0.5 * gB * N.H1 ** 2 * (hw1 + N.H1 / 3) + gB * N.H1 * hw1 * hw1 / 2 + 0.5 * gp * hw1 ** 3 / 3;
+    N.Pa = N.Ka * N.Ip; N.Pah = N.Pa * cos(N.delta + N.theta); N.Pav = N.Pa * sin(N.delta + N.theta);
+    N.ya = N.Ipm / N.Ip; N.xa = B;
+    N.Pqh = p.qs * N.Ka * p.H; N.yq = p.H / 2; N.Pqv = p.qs * g.Ws; N.xq = p.C + p.T + g.Ws / 2;
+    N.Pw = 0.5 * p.gW * (hw1 ** 2 - p.hw2 ** 2);
+    N.yw = N.Pw === 0 ? 0 : p.gW * (hw1 ** 3 - p.hw2 ** 3) / 6 / N.Pw;
+    N.Pb = p.gW * (hw1 + p.hw2) / 2 * B;
+    N.xb = hw1 + p.hw2 === 0 ? B / 2 : B * (p.hw2 + 2 * hw1) / (3 * (hw1 + p.hw2));
+    const ta = tan(N.alpha), C = p.C, S = p.S, T = p.T, E = p.E, D1 = p.D1, D2 = p.D2, gc = p.gC;
+    o.items = [
+      ['(1) 牆身矩形', T * h * gc, C + T / 2, D1 + D2 + h / 2],
+      ['(2) 牆身下基礎', S * (D1 + D2) * gc, C + S / 2, (D1 + D2) / 2],
+      ['(3) 趾版矩形', C * D2 * gc, C / 2, D2 / 2],
+      ['(4) 踵版矩形', E * D2 * gc, C + S + E / 2, D2 / 2],
+      ['(5) 趾版斜坡', 0.5 * C * D1 * gc, 2 * C / 3, D2 + D1 / 3],
+      ['(6) 踵版斜坡', 0.5 * E * D1 * gc, C + S + E / 3, D2 + D1 / 3],
+      ['(7) 牆背斜面', 0.5 * (S - T) * h * gc, C + T + (S - T) / 3, D1 + D2 + h / 3],
+      ['(8) 踵版上填土', E * h * gB, C + S + E / 2, D1 + D2 + h / 2],
+      ['(9) 背填坡填土', 0.5 * g.Ws ** 2 * ta * gB, C + T + 2 * g.Ws / 3, p.H + g.Ws * ta / 3],
+      ['(10) 牆背斜面上填土', 0.5 * (S - T) * h * gB, C + T + 2 * (S - T) / 3, D1 + D2 + 2 * h / 3],
+      ['(11) 踵版斜坡上填土', 0.5 * E * D1 * gB, C + S + 2 * E / 3, D2 + 2 * D1 / 3],
+      ['(12) 趾版上覆土', C * (p.Df - D1 / 2) * p.gF, C / 2, D2 + p.Df / 2],
+      ['(13) 牆前積水', p.gW * Math.max(0, p.hw2 - g.Y) * C, C / 2, g.Y + Math.max(0, p.hw2 - g.Y) / 2]
+    ].map(([name, W, x, y]) => ({ name, W, x, y }));
+    o.SW = o.items.reduce((a, b) => a + b.W, 0);
+    o.SWx = o.items.reduce((a, b) => a + b.W * b.x, 0);
+    o.SWy = o.items.reduce((a, b) => a + b.W * b.y, 0);
+    N.ext = [
+      { name: 'Pah 主動土壓水平', H: N.Pah, y: N.ya }, { name: 'Pav 主動土壓垂直', V: N.Pav, x: N.xa },
+      { name: 'Pqh 超載水平', H: N.Pqh, y: N.yq }, { name: 'Pqv 超載垂直', V: N.Pqv, x: N.xq },
+      { name: 'Pw 水壓', H: N.Pw, y: N.yw }, { name: 'Pb 揚壓力', V: -N.Pb, x: N.xb }];
+    N.SV = o.SW + N.Pav + N.Pqv - N.Pb;
+    N.SH = N.Pah + N.Pqh + N.Pw;
+    N.Mr = o.SWx + N.Pav * N.xa + N.Pqv * N.xq - N.Pb * N.xb;
+    N.Md = N.Pah * N.ya + N.Pqh * N.yq + N.Pw * N.yw;
+
+    // ---------- 地震 ----------
+    const Q = o.e = {};
+    Q.psi = D(Math.atan(p.kh / (1 - p.kv)));
+    Q.Kae = moKae(N.phi, N.delta, N.theta, N.alpha, Q.psi);
+    Q.Pae = Q.Kae * (1 - p.kv) * N.Ip; Q.Paeh = Q.Pae * cos(N.delta + N.theta); Q.Paev = Q.Pae * sin(N.delta + N.theta);
+    Q.yae = (N.Pah * N.ya + (Q.Paeh - N.Pah) * 2 * p.H / 3) / Q.Paeh; Q.xae = B;
+    Q.Pqeh = p.qs * Q.Kae * (1 - p.kv) * p.H;
+    Q.yqe = Q.Pqeh === 0 ? 0 : (N.Pqh * N.yq + (Q.Pqeh - N.Pqh) * 2 * p.H / 3) / Q.Pqeh;
+    Q.Pqev = N.Pqv; Q.xqe = N.xq;
+    const dPw = 7 / 12 * p.kh * p.gW * hw1 ** 2;
+    Q.Pwe = N.Pw + dPw; Q.ywe = Q.Pwe === 0 ? 0 : (N.Pw * N.yw + dPw * 0.4 * hw1) / Q.Pwe;
+    Q.Pbe = N.Pb; Q.xbe = N.xb;
+    Q.ext = [
+      { name: 'Paeh 動態土壓水平', H: Q.Paeh, y: Q.yae }, { name: 'Paev 動態土壓垂直', V: Q.Paev, x: Q.xae },
+      { name: 'Pqeh 超載水平', H: Q.Pqeh, y: Q.yqe }, { name: 'Pqev 超載垂直', V: Q.Pqev, x: Q.xqe },
+      { name: 'Pwe 水壓', H: Q.Pwe, y: Q.ywe }, { name: 'Pbe 揚壓力', V: -Q.Pbe, x: Q.xbe }];
+    Q.SV = o.SW * (1 - p.kv) + Q.Paev + Q.Pqev - Q.Pbe;
+    Q.SH = p.kh * o.SW + Q.Paeh + Q.Pqeh + Q.Pwe;
+    Q.Mr = o.SWx * (1 - p.kv) + Q.Paev * Q.xae + Q.Pqev * Q.xqe - Q.Pbe * Q.xbe;
+    Q.Md = p.kh * o.SWy + Q.Paeh * Q.yae + Q.Pqeh * Q.yqe + Q.Pwe * Q.ywe;
+
+    // Kp
+    const kpCalc = () => {
+      if (p.kpm === 'rankine') return tan(45 + p.phiF / 2) ** 2;
+      if (p.kpm === 'coulomb') return coulombKp(p.phiF, p.deltaP, 0, 0);
+      return coulombKp(N.phi, N.delta, N.theta, N.alpha);
+    };
+    const kpeCalc = () => {
+      if (p.kpm === 'example') return tan(45 + N.phi / 2) ** 2;
+      return moKpe(p.phiF, p.kpm === 'coulomb' ? p.deltaP : 0, Q.psi);
+    };
+    N.Kp = isFinite(p.kpOvr) && p.kpOvr !== null && p.kpOvr !== '' ? +p.kpOvr : kpCalc();
+    Q.Kp = isFinite(p.kpeOvr) && p.kpeOvr !== null && p.kpeOvr !== '' ? +p.kpeOvr : kpeCalc();
+
+    for (const [X, sfx, elim] of [[N, 'n', 6], [Q, 'e', 3]]) stability(X, p, g, sfx, elim);
+
+    // ---------- 配筋 ----------
+    const bar = k => { const b = p.bars[k]; const Ab = BARS[b.D] || 0; return { Ab, As: Ab * 100 / b.s }; };
+    o.bar = {}; for (const k of Object.keys(p.bars)) o.bar[k] = bar(k);
+    const KAH = N.Ka * cos(N.delta + N.theta), KAEH = Q.Kae * (1 - p.kv) * cos(N.delta + N.theta);
+    o.KAH = KAH; o.KAEH = KAEH; o.m = p.fy / (0.85 * p.fc);
+    const zw = Math.max(0, p.H - hw1);
+    function stem(z) {
+      const m = Math.min(z, zw), d = Math.max(0, z - zw);
+      const Fe = KAH * (gB * m * m / 2 + gB * m * d + gp * d * d / 2);
+      const Me = KAH * (gB * m * m / 2 * (d + m / 3) + gB * m * d * d / 2 + gp * d ** 3 / 6);
+      const Fw = p.gW * d * d / 2, Mw = p.gW * d ** 3 / 6;
+      const Fq = p.qs * N.Ka * z, Mq = p.qs * N.Ka * z * z / 2;
+      const rat = KAEH / KAH - 1, dFq = (p.qs * Q.Kae * (1 - p.kv) - p.qs * N.Ka) * z, dFw = 7 / 12 * p.kh * p.gW * d * d;
+      const Wst = (T * z + 0.5 * (S - T) * z * z / h) * gc + 0.5 * (S - T) * z * z / h * gB;
+      const Mst = (T * z * z / 2 + 0.5 * (S - T) * z ** 3 / (3 * h)) * gc + 0.5 * (S - T) * z ** 3 / (3 * h) * gB;
+      return {
+        Vn: Fe + Fw + Fq, Mn: Me + Mw + Mq,
+        Ve: Fe * (1 + rat) + Fw + dFw + Fq + dFq + p.kh * Wst,
+        Me: Me + Fe * rat * 2 * z / 3 + Mw + dFw * 0.4 * d + Mq + dFq * 2 * z / 3 + p.kh * Mst
+      };
+    }
+    function design(title, z, t, f, Asp, desc) {
+      const r = { title, z, t, desc, ...f };
+      r.d = t - p.cover;
+      r.Vu = Math.max(cf.lfn * f.Vn, cf.lfe * f.Ve);
+      r.pVc = cf.pv * 0.53 * Math.sqrt(p.fc) * 100 * r.d / 1000;
+      r.okV = r.pVc >= r.Vu;
+      r.Mu = Math.max(cf.lfn * f.Mn, cf.lfe * f.Me, 0);
+      r.Rn = r.Mu * 1e5 / (cf.pb * 100 * r.d ** 2);
+      const k = 2 * o.m * r.Rn / p.fy;
+      r.rho = k >= 1 ? 99 : (1 - Math.sqrt(1 - k)) / o.m;
+      r.rhoMin = o.rhoMin; r.rho43 = 4 / 3 * r.rho;
+      r.rhoU = Math.max(r.rho, Math.min(o.rhoMin, r.rho43));
+      r.Asr = r.rhoU * 100 * r.d; r.Asp = Asp; r.okM = Asp >= r.Asr;
+      return r;
+    }
+    const tz = z => (T + (S - T) * z / h) * 100;
+    const As = k => o.bar[k].As;
+    o.rc = [];
+    const z1 = h, z2 = h - p.bars.S3.L, z3 = h - p.bars.S2.L;
+    o.rc.push(design('(1) 牆身鋼筋 S1+S2+S3（牆底）', z1, tz(z1), stem(z1), As('S1') + As('S2') + As('S3'), 'S1+S2+S3'));
+    o.rc.push(design('(2) 牆身鋼筋 S1+S2（S3 斷筋處）', z2, tz(z2), stem(z2), As('S1') + As('S2'), 'S1+S2'));
+    o.rc.push(design('(3) 牆身鋼筋 S1（S2 斷筋處）', z3, tz(z3), stem(z3), As('S1'), 'S1'));
+    // base
+    const tav = D2 + D1 / 2, q1 = gB * (p.H - tav), q2 = gc * tav, q0 = p.qs;
+    o.base = { tav, q1, q2, q0 };
+    const pres = (u, X) => Math.abs(X.e) <= B / 6 ? X.qt + (X.qh - X.qt) * u / B :
+      (X.e > 0 ? Math.max(0, X.qt * (1 - u / X.a)) : Math.max(0, X.qh * (1 - (B - u) / X.a)));
+    const NS = 20;
+    function heel(X) { let V = 0, M = 0; const dx = E / NS; for (let i = 1; i <= NS; i++) { const x = (i - .5) * dx; const w = q0 + q1 + q2 - pres(B - x, X); V += w * dx; M += w * dx * (E - x); } return { V, M }; }
+    function toe(X) { let V = 0, M = 0; const dx = C / NS; for (let i = 1; i <= NS; i++) { const u = (i - .5) * dx; const w = pres(u, X) - q2; V += w * dx; M += w * dx * (C - u); } return { V, M }; }
+    const hn = heel(N), he = heel(Q), tn = toe(N), te = toe(Q);
+    const tb = (D2 + D1) * 100;
+    o.rc.push(design('(1) 基礎踵端鋼筋 S4、S6（上層筋）', null, tb, { Vn: hn.V, Mn: hn.M, Ve: he.V, Me: he.M }, As('S4'), 'S4'));
+    o.rc.push(design('(2) 基礎趾端鋼筋 S5、S7（下層筋）', null, tb, { Vn: tn.V, Mn: tn.M, Ve: te.V, Me: te.M }, As('S5'), 'S5'));
+    const taS = (T + S) / 2 * 100;
+    o.min = [
+      { k: 'S8', title: '暴露面垂直鋼筋 S8（單層）', rho: cf.s8, Asr: cf.s8 * 100 * taS / 2, Asp: As('S8'), basis: `ρt·b·ta/2，ta = ${taS.toFixed(1)} cm` },
+      { k: 'T1', title: '牆身水平鋼筋 T1（雙面）', rho: cf.t1, Asr: cf.t1 * 100 * taS, Asp: 2 * As('T1'), basis: `ρt·b·ta，ta = ${taS.toFixed(1)} cm` },
+      { k: 'T2', title: '基礎溫度鋼筋 T2（雙面）', rho: cf.t2, Asr: cf.t2 * 100 * tav * 100, Asp: 2 * As('T2'), basis: `ρt·b·tav，tav = ${(tav * 100).toFixed(1)} cm` }
+    ].map(x => ({ ...x, ok: x.Asp >= x.Asr }));
+
+    const checks = [N.okO, N.okE, N.okB, N.okS, Q.okO, Q.okE, Q.okB, Q.okS,
+      ...o.rc.map(r => r.okV && r.okM), ...o.min.map(m => m.ok)];
+    o.allOK = checks.every(Boolean);
+    return o;
+  }
+
+  function stability(X, p, g, sfx, elim) {
+    const B = g.B;
+    X.FSo = X.Md <= 0 ? 99 : X.Mr / X.Md;
+    X.fso = p['fso_' + sfx]; X.fss = p['fss_' + sfx]; X.fsb = p['fsb_' + sfx];
+    X.okO = X.FSo >= X.fso;
+    X.e = B / 2 - (X.Mr - X.Md) / X.SV; X.elim = elim; X.okE = Math.abs(X.e) <= B / elim;
+    X.phiT = Math.min(40, Math.floor(p.phiF));
+    [X.Nc, X.Nq, X.Nr] = NTAB[X.phiT];
+    X.g1 = p.wt ? p.gF - p.gW : p.gF;
+    X.q = p.gF * g.Y - p.gW * Math.min(g.Y, p.hw2);
+    X.beta = D(Math.atan(X.SH / X.SV));
+    const kp = tan(45 + p.phiF / 2);
+    X.Fcd = p.phiF >= 10 ? 1 + 0.2 * g.Y / B * kp : Math.min(1.5, 1 + 0.2 * g.Y / B);
+    X.Fqd = p.phiF >= 10 ? 1 + 0.1 * g.Y / B * kp : 1;
+    X.Fci = (1 - X.beta / 90) ** 2;
+    X.Fri = p.phiF >= 10 ? Math.max(0, 1 - X.beta / p.phiF) ** 2 : 0;
+    X.qu = p.cF * X.Nc * X.Fcd * X.Fci + X.q * X.Nq * X.Fqd * X.Fci + 0.5 * X.g1 * B * X.Nr * X.Fqd * X.Fri;
+    X.a = Math.min(B, 3 * (B / 2 - Math.abs(X.e)));
+    if (Math.abs(X.e) <= B / 6) { X.qt = X.SV / B * (1 + 6 * X.e / B); X.qh = X.SV / B * (1 - 6 * X.e / B); }
+    else if (X.e > 0) { X.qt = 2 * X.SV / (3 * (B / 2 - X.e)); X.qh = 0; }
+    else { X.qt = 0; X.qh = 2 * X.SV / (3 * (B / 2 + X.e)); }
+    X.qmax = Math.max(X.qt, X.qh);
+    X.FSb = X.qu / X.qmax; X.okB = X.FSb >= X.fsb;
+    X.gp = p.wt ? p.gF - p.gW : p.gF;
+    X.Pp = X.gp * (g.Y + p.Kd / 2) * X.Kp * p.Kd;
+    X.Lp = B - 2 * Math.abs(X.e);
+    X.L1 = Math.min(p.Kc, p.Kd / tan(45 - p.phiF / 2), X.Lp);
+    X.V1 = X.Lp <= 0 ? 0 : X.L1 / X.Lp * X.SV; X.V2 = X.SV - X.V1;
+    X.Hu = X.V1 * tan(p.phiF) + X.V2 * tan(p.phiF * 2 / 3) + p.cF / 2 * B + 0.5 * X.Pp;
+    X.FSs = X.Hu / X.SH; X.okS = X.FSs >= X.fss;
+  }
+
+  root.RW = { compute, DEFAULTS, CODES, BARS, NTAB };
+})(typeof window !== 'undefined' ? window : globalThis);
