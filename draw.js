@@ -231,5 +231,70 @@
     return s + '</svg>';
   }
 
-  root.RWDraw = { loads, dims };
+  /* ---------------- 作用力分塊編號示意圖（固定比例） ---------------- */
+  function blocks() {
+    const C = 0.8, S = 0.6, T = 0.3, E = 2.0, B = C + S + E, D2 = 0.5, D1 = 0.2, H = 3.6, yb = D1 + D2, ta = 0.35, Y = 1.15;
+    const Ws = B - C - T, Kc = 1.75, Ks = 0.3, Kd = 0.3;
+    const F = frame(-0.35, B + 0.35, -Kd - 0.15, H + Ws * ta + 0.2, 420);
+    const conc = 'fill="var(--concrete)" fill-opacity=".55"', soil = 'fill="var(--soil)" fill-opacity=".35"';
+    const poly = (pts, st) => `<polygon points="${F.P(pts)}" ${st} stroke="var(--ink)" stroke-width="1"/>`;
+    const lab = (x, y, t) => `<text x="${F.X(x)}" y="${F.Y(y) + 5}" text-anchor="middle" class="bn">${t}</text>`;
+    let s = `<svg viewBox="0 0 ${F.W} ${F.H.toFixed(0)}" class="draw" role="img" aria-label="作用力分塊編號示意圖">${defs}`;
+    s += poly([[C + T, H], [B, H], [B, H + Ws * ta]], soil);                       // 9
+    s += poly([[C + T, H], [C + S, yb], [C + S, H]], soil);                        // 10
+    s += poly([[C + S, yb], [B, yb], [B, H], [C + S, H]], soil);                   // 8
+    s += poly([[C + S, yb], [B, D2], [B, yb]], soil);                              // 11
+    s += poly([[0, D2], [C, yb], [C, Y], [0, Y]], soil);                           // 12
+    s += `<rect x="${F.X(0)}" y="${F.Y(Y + 0.28)}" width="${F.X(C) - F.X(0)}" height="${F.Y(Y) - F.Y(Y + 0.28)}" fill="var(--water)" fill-opacity=".25" stroke="var(--water)" stroke-dasharray="4 3"/>`; // 13
+    s += poly([[C, yb], [C + T, yb], [C + T, H], [C, H]], conc);                   // 1
+    s += poly([[C + T, yb], [C + S, yb], [C + T, H]], conc);                       // 7
+    s += poly([[C, 0], [C + S, 0], [C + S, yb], [C, yb]], conc);                   // 2
+    s += poly([[0, 0], [C, 0], [C, D2], [0, D2]], conc);                           // 3
+    s += poly([[C + S, 0], [B, 0], [B, D2], [C + S, D2]], conc);                   // 4
+    s += poly([[0, D2], [C, D2], [C, yb]], conc);                                  // 5
+    s += poly([[C + S, D2], [B, D2], [C + S, yb]], conc);                          // 6
+    s += poly([[Kc, 0], [Kc + Ks, 0], [Kc + Ks, -Kd], [Kc, -Kd]], conc);
+    s += grass(F, -0.3, 0, Y);
+    s += `<line class="gl" x1="${F.X(C + T)}" y1="${F.Y(H)}" x2="${F.X(B + 0.3)}" y2="${F.Y(H + (B + 0.3 - C - T) * ta)}"/>`;
+    s += lab(C + T / 2, H * 0.62, 1) + lab(C + S / 2, yb / 2, 2) + lab(C / 2, D2 / 2, 3) + lab(C + S + E / 2, D2 / 2, 4)
+      + lab(C * 0.66, D2 + D1 * 0.3, 5) + lab(C + S + E / 3, D2 + D1 * 0.3, 6) + lab(C + T + (S - T) / 3, yb + 0.6, 7)
+      + lab(C + S + E / 2, (yb + H) / 2, 8) + lab(C + T + Ws * 0.7, H + Ws * ta * 0.3, 9) + lab(C + T + 2 * (S - T) / 3, H - 0.55, 10)
+      + lab(C + S + E * 0.75, yb - D1 * 0.3, 11) + lab(C / 2, (D2 + Y) / 2 + 0.05, 12) + lab(C / 2, Y + 0.14, 13);
+    s += `<text class="cap" x="${F.W - 6}" y="14" text-anchor="end">編號對應作用力總表 (1)~(13)</text>`;
+    return s + '</svg>';
+  }
+
+  /* ---------------- 抗滑動（止滑榫）示意圖（固定比例） ---------------- */
+  function slide() {
+    const C = 0.8, S = 0.6, T = 0.3, B = 3.4, D2 = 0.5, D1 = 0.2, yb = D1 + D2, Y = 1.15, Kd = 0.45, Kc = 2.0, Ks = 0.35, L1 = 0.75, e = 0.2;
+    const Lp = B - 2 * e;
+    const F = frame(-1.75, B + 0.2, -Kd - 1.2, Y + 0.75, 520);
+    let s = `<svg viewBox="0 0 ${F.W} ${F.H.toFixed(0)}" class="draw" role="img" aria-label="抗滑動示意圖">${defs}`;
+    s += `<polygon points="${F.P([[-1.2, Y], [C, Y], [C, yb], [0, D2], [0, -Kd - 0.25], [-1.2, -Kd - 0.25]])}" fill="url(#pSoil)"/>`;
+    s += grass(F, -1.2, C, Y);
+    s += `<polygon points="${F.P([[0, 0], [B, 0], [B, D2], [C + S, yb], [C + S, Y + 0.65], [C, Y + 0.65], [C, yb], [0, D2]])}" fill="url(#pConc)" class="conc"/>`;
+    s += `<polygon points="${F.P([[Kc, 0], [Kc + Ks, 0], [Kc + Ks, -Kd], [Kc, -Kd]])}" fill="url(#pConc)" class="conc"/>`;
+    s += `<line x1="${F.X(C)}" y1="${F.Y(Y + 0.65)}" x2="${F.X(C + S)}" y2="${F.Y(Y + 0.65)}" stroke="var(--muted)" stroke-dasharray="6 4"/>`;
+    // slip surface
+    s += `<polyline points="${F.P([[0, -0.02], [Kc - L1, -0.02], [Kc, -Kd - 0.02], [Kc + Ks + 0.02, -Kd - 0.02], [Kc + Ks + 0.02, -0.02], [B, -0.02]])}" fill="none" stroke="#d62728" stroke-width="3.5" stroke-dasharray="12 6"/>`;
+    s += `<line class="ldr" x1="${F.X(Kc - L1 / 2)}" y1="${F.Y(-Kd / 2)}" x2="${F.X(0.9)}" y2="${F.Y(-0.18)}"/><text class="bl" x="${F.X(0.87)}" y="${F.Y(-0.18) + 5}" text-anchor="end">滑動面</text>`;
+    // Pp arrows
+    for (let i = 0; i < 5; i++) {
+      const y = -Kd + i * Kd / 4, len = 0.2 + 0.25 * (4 - i) / 4;
+      s += `<line class="ppa" x1="${F.X(-0.05 - len)}" y1="${F.Y(y)}" x2="${F.X(-0.03)}" y2="${F.Y(y)}" marker-end="url(#ar)"/>`;
+    }
+    s += `<text class="bl" x="${F.X(-0.3)}" y="${F.Y(0) - 6}" text-anchor="middle">Pp</text>`;
+    // dims left
+    s += dimV(F, -1.5, -Kd, Y, 'D = Y + Kd', -1) + dimV(F, -1.0, 0, Y, 'Y', -1) + dimV(F, -1.0, -Kd, 0, 'Kd', -1);
+    s += ext(F, -0.6, -Kd, -1.55, -Kd) + ext(F, -0.6, 0, -1.05, 0) + ext(F, -1.2, Y, -1.55, Y);
+    // dims bottom
+    const y1 = -Kd - 0.35, y2 = -Kd - 0.65, y3 = -Kd - 0.95;
+    for (const x of [0, Kc - L1, Kc, Kc + Ks]) s += ext(F, x, x >= Kc ? -Kd : 0, x, y2 - 0.06);
+    s += ext(F, Lp, 0, Lp, y3 - 0.06);
+    s += dimH(F, 0, Kc, y1, 'Kc') + dimH(F, 0, Kc - L1, y2, 'L2') + dimH(F, Kc - L1, Kc, y2, 'L1') + dimH(F, Kc, Kc + Ks, y2, 'Ks');
+    s += dimH(F, 0, Lp, y3, "L' = B − 2e");
+    return s + '</svg>';
+  }
+
+  root.RWDraw = { loads, dims, blocks, slide };
 })(window);

@@ -168,7 +168,7 @@
       ${eq('qh（踵端）' + (Math.abs(X.e) > o.g.B / 6 ? '　※ |e|>B/6 採三角形分布' : ''), n(X.qh), 'tf/m²')}
       ${eq('FS = qu / max(qt, qh)', n(X.FSb), ok(X.okB, '≥ ' + n(X.fsb, 1)), true)}
       <h3>${no}.4 抗滑動檢核（設止滑榫）</h3>
-      <p class="note">設置剪力榫時，潛在滑動面為止滑榫前端之被動受剪區域。</p>
+      <div class="sidefig"><div class="sf-main"><p class="note">設置剪力榫時，潛在滑動面為止滑榫前端之被動受剪區域。</p>
       ${eq(kp, n(X.Kp, 3), '', true)}
       ${eq('止滑榫位置 Kc ／ 尺寸 Kd', n(P.Kc) + ' / ' + n(P.Kd), 'm')}
       ${eq('趾地覆土深度 D = Y + Kd', n(o.g.Y + P.Kd), 'm')}
@@ -179,7 +179,7 @@
       ${eq("V1 = L1/L'·ΣV ／ V2 = ΣV − V1", n(X.V1) + ' / ' + n(X.V2), 'tf')}
       ${eq('ΣHu = V1·tanφ + V2·tan(2φ/3) + (c/2)·B + 50%·Pp', n(X.Hu), 'tf')}
       ${eq('ΣHd', n(X.SH), 'tf')}
-      ${eq('FS = ΣHu / ΣHd', n(X.FSs), ok(X.okS, '≥ ' + n(X.fss, 1)), true)}`;
+      ${eq('FS = ΣHu / ΣHd', n(X.FSs), ok(X.okS, '≥ ' + n(X.fss, 1)), true)}</div><div class="sf-fig">${RWDraw.slide()}</div></div>`;
   }
   function rcReport(r) {
     return `<h4>${r.title}</h4>
@@ -259,7 +259,7 @@
     <h4>c. 水壓力</h4>
     ${eq('Pw ／ yw', n(N.Pw) + ' / ' + n(N.yw), 'tf, m')}
     ${eq('Pb（揚壓力）／ xb', n(N.Pb) + ' / ' + n(N.xb), 'tf, m')}
-    <h4>d. 作用力總表</h4>${forceTable(o.items, N.ext, 'n')}
+    <h4>d. 作用力總表</h4><div class="sidefig"><div class="sf-main">${forceTable(o.items, N.ext, 'n')}</div><div class="sf-fig">${RWDraw.blocks()}</div></div>
     ${stabReport(N, 3, 6, kpLab)}
 
     <h2>4. 穩定分析（地震時）</h2>
@@ -271,7 +271,7 @@
     ${eq('Paev ／ xae', n(Q.Paev) + ' / ' + n(Q.xae), 'tf, m')}
     ${eq('Pqeh ／ yqe', n(Q.Pqeh) + ' / ' + n(Q.yqe), 'tf, m')}
     ${eq('Pwe（含 Westergaard 動水壓）／ ywe', n(Q.Pwe) + ' / ' + n(Q.ywe), 'tf, m')}
-    <h4>作用力總表</h4>${forceTable(o.items, Q.ext, 'e')}
+    <h4>d. 作用力總表</h4><div class="sidefig"><div class="sf-main">${forceTable(o.items, Q.ext, 'e')}</div><div class="sf-fig">${RWDraw.blocks()}</div></div>
     ${stabReport(Q, 4, 3, kpeLab)}
 
     <h2>5. 配筋設計（USD）</h2>
