@@ -22,8 +22,8 @@
       ['qs', '牆背地表超載 qs', 'tf/m²'], ['hw1r', '牆背水位比 Hw1/H', ''], ['=hw1', '牆背水位 Hw1', 'm'],
       ['hw2', '牆前水位 Hw2（自基底）', 'm'], ['wt', '基底位於地下水位下', '', 'bool']] },
     { t: '1.3 載重組合（含配筋規範與強度折減因子）', info: 'combo', f: [
-      ['code', '配筋規範', '', 'select', [['hw', '公路橋梁規範（範例版）'], ['c112', '112年混凝土規範']]]],
-      hint: '範例版：1.69／1.3、φv=0.85、ρmin=14/fy；112版：1.6／1.2、φv=0.75、ρmin=max(0.8√fc\'/fy,14/fy)' },
+      ['code', '配筋規範', '', 'select', [['hw', '公路橋梁設計規範'], ['c112', '112年混凝土規範']]]],
+      hint: '公路橋梁：常時 1.3D+1.69H+1.3F、地震時 1.3D+1.69H+1.3EQ（靜水壓 F 以 1.3 計入），φb=0.9、φv=0.85、ρmin=14/fy；112版：1.6／1.2、φv=0.75、ρmin=max(0.8√fc\'/fy,14/fy)' },
     { t: '1.4 材料設計強度', f: [['fc', "混凝土 fc'", 'kgf/cm²'], ['fy', '鋼筋 fy', 'kgf/cm²']] },
     { t: '1.5 地震係數', f: [
       ['pgaH', '地表水平向尖峰加速度 PGAh', 'g'], ['pgaV', '地表垂直向尖峰加速度 PGAv', 'g'],
@@ -36,7 +36,8 @@
       ['fso_e', '抗傾覆（地震）', ''], ['fsb_n', '抗承載（常時）', ''], ['fsb_e', '抗承載（地震）', '']] },
     { t: '1.7 保護層', f: [['cover', "保護層 d'", 'cm']] },
     { t: '1.8 土壓力參數', f: [
-      ['deltaR', '牆背摩擦角比 δ/ϕ', ''],
+      ['deltaR', '常時牆背摩擦角比 δ/ϕ', ''], ['=dN', '常時 δ', '度'],
+      ['deltaRE', '地震時牆背摩擦角比 δ/ϕ', ''], ['=dE', '地震時 δ', '度'],
       ['kam', 'Ka 計算方法', '', 'select', [['coulomb', 'Coulomb'], ['rankine', 'Rankine']]],
       ['kaOvr', 'Ka 指定值（空白=計算）', '', 'opt'],
       ['kaeOvr', 'KAE 指定值（空白=計算）', '', 'opt'],
@@ -207,9 +208,11 @@
       ${eq('斷面厚度 t ／ 有效深度 d', n(r.t, 1) + ' / ' + n(r.d), 'cm')}
       ${eq('常時 V ／ M', n(r.Vn) + ' / ' + n(r.Mn), 'tf, tf·m')}
       ${eq('地震時 V ／ M', n(r.Ve) + ' / ' + n(r.Me), 'tf, tf·m')}
-      ${eq(`Vu = max(${n(o.cf.lfn)}Vn, ${n(o.cf.lfe)}Ve)`, n(r.Vu), 'tf/m', true)}
+      ${eq(`常時 Vu = ${o.cf.combN} ／ 地震時 Vu = ${o.cf.combE}`, n(r.Vun) + ' / ' + n(r.Vue), 'tf/m')}
+      ${eq('Vu = max(常時, 地震時)', n(r.Vu), 'tf/m', true)}
       ${eq(`φVc = ${n(o.cf.pv)}×0.53√fc'·b·d`, n(r.pVc), r.okV ? 'φVc≥Vu OK!' : 'φVc<Vu NG!')}
-      ${eq(`Mu = max(${n(o.cf.lfn)}Mn, ${n(o.cf.lfe)}Me)`, n(r.Mu), 'tf·m/m', true)}
+      ${eq(`常時 Mu = ${o.cf.combN} ／ 地震時 Mu = ${o.cf.combE}`, n(r.Mun) + ' / ' + n(r.Mue), 'tf·m/m')}
+      ${eq('Mu = max(常時, 地震時)', n(r.Mu), 'tf·m/m', true)}
       ${eq('Rn = Mu/(φb·b·d²)', n(r.Rn, 3), 'kgf/cm²')}
       ${eq("ρ = (1/m)[1 − √(1 − 2mRn/fy)]，m = fy/0.85fc' = " + n(o.m, 3), r.rho > 1 ? '斷面不足' : n(r.rho, 4), '')}
       ${eq('ρmin ／ 4ρ/3', n(r.rhoMin, 4) + ' / ' + n(r.rho43, 4), '')}
@@ -242,8 +245,9 @@
     ${eq('牆前地下水位 Hw2（自基礎底面）', n(p.hw2), 'm')}
     <h3>1.3 載重組合（${o.cf.name}）</h3>
     <div class="scroll"><table class="t"><thead><tr><th></th><th>穩定分析</th><th>配筋設計</th></tr></thead><tbody>
-      <tr><td>常時</td><td>D+L+H+F</td><td>${n(o.cf.lfn)}(D+L+H+F)</td></tr>
-      <tr><td>地震時</td><td>D+L+H+F+EQ</td><td>${n(o.cf.lfe)}(D+L+H+F+EQ)</td></tr></tbody></table></div>
+      <tr><td>常時</td><td>D+L+H+F</td><td>${o.cf.combN}</td></tr>
+      <tr><td>地震時</td><td>D+L+H+F+EQ</td><td>${o.cf.combE}</td></tr></tbody></table></div>
+    <p class="note">D：靜載重（含踵版上土重、超載重）；H：側向土壓力（含超載側壓）；F：水壓力；EQ：地震力（動態土壓增量、牆體慣性力、動水壓）。${P.code === 'hw' ? '地震時靜水壓 F 仍以 1.3 計入。' : ''}</p>
     ${eq('強度折減因子：彎矩 φb ／ 剪力 φv', n(o.cf.pb) + ' / ' + n(o.cf.pv), '')}
     <h3>1.4 材料設計強度</h3>
     ${eq("混凝土強度 fc'", n(p.fc, 0), 'kgf/cm²')}${eq('鋼筋降伏強度 fy', n(p.fy, 0), 'kgf/cm²')}
@@ -259,7 +263,7 @@
       <tr><td>抗傾覆</td><td>${n(p.fso_n, 1)}</td><td>${n(p.fso_e, 1)}</td></tr>
       <tr><td>抗承載</td><td>${n(p.fsb_n, 1)}</td><td>${n(p.fsb_e, 1)}</td></tr></tbody></table></div>
     <h3>1.7 保護層</h3>${eq("保護層厚度 d'", n(p.cover, 1), 'cm')}
-    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ', n(p.deltaR, 3), '')}${eq('主動土壓係數計算方法', kaMeth + (N.kaOvr ? '（Ka = ' + n(N.Ka, 3) + '）' : ''), '')}${Q.kaeOvr ? eq('地震時主動土壓係數 KAE', '指定值 ' + n(Q.Kae, 3), '') : ''}${eq('被動土壓係數計算方法', p.kpm === 'coulomb' ? 'Coulomb（δp = ' + n(p.deltaP, 1) + '°）' : 'Rankine', '')}
+    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${eq('主動土壓係數計算方法', kaMeth + (N.kaOvr ? '（Ka = ' + n(N.Ka, 3) + '）' : ''), '')}${Q.kaeOvr ? eq('地震時主動土壓係數 KAE', '指定值 ' + n(Q.Kae, 3), '') : ''}${eq('被動土壓係數計算方法', p.kpm === 'coulomb' ? 'Coulomb（δp = ' + n(p.deltaP, 1) + '°）' : 'Rankine', '')}
 
     <h2>2. 擋土牆設計尺寸及分析結果</h2>
     <h3>2.1 擋土牆設計尺寸</h3>
@@ -299,7 +303,7 @@
     ${eq('φ = tan⁻¹[kh/(1−kv)]', n(Q.vphi), '度')}
     ${eq('ϕ − φ − α', n(Q.crit), Q.okCrit ? '≥ 0 OK!' : '< 0 NG!（背填土失穩，KAE 無解）')}
     ${FX_KAE}
-    ${eq('ϕ ／ δ ／ θ ／ α', `${n(N.phi, 1)} / ${n(N.delta, 1)} / ${n(N.theta, 1)} / ${n(N.alpha, 1)}`, '度')}
+    ${eq('ϕ ／ δ（地震時）／ θ ／ α', `${n(N.phi, 1)} / ${n(Q.delta, 1)} / ${n(N.theta, 1)} / ${n(N.alpha, 1)}`, '度')}
     ${eq(Q.kaeOvr ? `KAE（指定值；式(7.3-12) 計算值 = ${n(Q.KaeCalc, 3)}）` : 'KAE', n(Q.Kae, 3), '', true)}
     ${eq('PAE = ½·γ·H²·(1−kv)·KAE　式(7.3-11)（水位以下採浸水單位重，即 KAE(1−kv)·Σ）', n(Q.Pae), 'tf/m')}
     ${eq('ΔPAE = PAE − PA　式(解7.3-4)', n(Q.dPae), 'tf/m')}
@@ -316,7 +320,8 @@
     <h2>5. 配筋設計（USD）</h2>
     <h3>5.1 設計條件</h3>
     <p>1. 牆身與基礎交界為剛性區。2. 牆身、趾版及踵版視為懸臂梁（公路橋梁設計規範 6.2.2、6.2.3）。
-    3. 地震時土壓動態增量作用點依牆體變位模式（${o.mv.name}，第7.3.4節解說2，以斷面深度 z 取代 H），並計入牆身慣性力。4. 基礎版依地盤反力分 20 等分條帶積分。</p>
+    3. 地震時土壓動態增量作用點依牆體變位模式（${o.mv.name}，第7.3.4節解說2，以斷面深度 z 取代 H），並計入牆身慣性力。4. 基礎版依地盤反力分 20 等分條帶積分；配筋時地盤反力以因數化載重（各分項乘載重係數）重新計算。
+    5. 載重組合（${o.cf.name}）：常時 ${o.cf.combN}；地震時 ${o.cf.combE}。</p>
     ${eq("m = fy/0.85fc'", n(o.m, 3), '')}${eq('ρmin', n(o.rhoMin, 4), '')}
     <h3>5.2 牆身設計</h3>${o.rc.slice(0, 3).map(rcReport).join('')}
     ${o.min.slice(0, 2).map((m, i) => `<h4>(${i + 4}) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}
@@ -329,13 +334,13 @@
 
   function run() {
     try { o = RW.compute(P); } catch (e) { console.error(e); return; }
-    for (const [k, v] of [['h', o.g.h], ['B', o.g.B], ['eta', o.g.eta], ['Y', o.g.Y], ['hw1', o.hw1], ['khS', o.khS], ['kvS', o.kvS]]) {
+    for (const [k, v] of [['h', o.g.h], ['B', o.g.B], ['eta', o.g.eta], ['Y', o.g.Y], ['hw1', o.hw1], ['khS', o.khS], ['kvS', o.kvS], ['dN', o.n.delta], ['dE', o.e.delta]]) {
       const el = document.getElementById('in_c_' + k); if (el) el.textContent = n(v, ['eta', 'khS', 'kvS'].includes(k) ? 3 : 2);
     }
     const cb = document.getElementById('combo');
     if (cb) cb.innerHTML = `<table class="kv"><thead><tr><th></th><th>穩定分析</th><th>配筋設計</th></tr></thead><tbody>
-      <tr><td>常時</td><td>D+L+H+F</td><td>${n(o.cf.lfn)}(D+L+H+F)</td></tr>
-      <tr><td>地震時</td><td>D+L+H+F+EQ</td><td>${n(o.cf.lfe)}(D+L+H+F+EQ)</td></tr></tbody></table>
+      <tr><td>常時</td><td>D+L+H+F</td><td>${o.cf.combN}</td></tr>
+      <tr><td>地震時</td><td>D+L+H+F+EQ</td><td>${o.cf.combE}</td></tr></tbody></table>
       <p class="hint">D=靜載重　L=活載重　H=土壓力　F=水壓力　EQ=地震力</p>
       <table class="kv"><tbody><tr><td>強度折減因子 φb ／ φv</td><td class="num">${n(o.cf.pb)} / ${n(o.cf.pv)}</td></tr></tbody></table>`;
     summary(); drawSection(o); report();
