@@ -169,6 +169,9 @@ details.grp > summary::-webkit-details-marker { display: none; }
 .report table.t td:first-child { text-align: left; }
 .report table.t tr.sum td { font-weight: 700; }
 .note { color: var(--muted); font-size: 13px; }
+.report .fx { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; padding: 8px 0; overflow-x: auto; }
+.report .fx math { font-size: 1.1em; margin: 0; }
+.report .fx .u { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
 
 .foot { color: var(--muted); font-size: 12px; text-align: center; padding: 10px 20px 30px; max-width: 1100px; margin: 0 auto; }
 
@@ -237,3 +240,4 @@ details.grp > summary::-webkit-details-marker { display: none; }
 .draw .ppa { stroke: #d62728; stroke-width: 1.8; }
 @media (max-width: 1100px) { .sidefig { flex-direction: column; } .sf-fig { flex-basis: auto; width: 100%; max-width: 480px; } }
 @media print { .sidefig { flex-direction: row; } .sf-fig { flex: 0 0 38%; } }
+@media (max-width: 600px) { .report .fx math { font-size: 0.9em; } }

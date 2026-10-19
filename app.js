@@ -5,9 +5,10 @@
   let P = load() || clone(RW.DEFAULTS);
 
   function load() {
-    try { const s = localStorage.getItem(KEY); if (s) return Object.assign(clone(RW.DEFAULTS), JSON.parse(s)); } catch (e) {}
+    try { const s = localStorage.getItem(KEY); if (s) return fix(Object.assign(clone(RW.DEFAULTS), JSON.parse(s))); } catch (e) {}
     return null;
   }
+  function fix(q) { if (q.kpm !== 'coulomb') q.kpm = 'rankine'; return q; }  // 已移除「範例沿用法」
   function save() { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {} }
 
   // ---------- form schema ----------
@@ -38,9 +39,10 @@
       ['deltaR', '牆背摩擦角比 δ/ϕ', ''],
       ['kam', 'Ka 計算方法', '', 'select', [['coulomb', 'Coulomb'], ['rankine', 'Rankine']]],
       ['kaOvr', 'Ka 指定值（空白=計算）', '', 'opt'],
-      ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb'], ['example', '範例沿用法']]],
+      ['kaeOvr', 'KAE 指定值（空白=計算）', '', 'opt'],
+      ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb']]],
       ['deltaP', '被動牆面摩擦角 δp', '度'], ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt']],
-      hint: 'Ka — Coulomb：式(7.3-5)，背填土 ϕ、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 一律依式(7.3-12)。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）；範例沿用法：沿用牆背主動土壓參數，僅供比對舊計算書。' },
+      hint: 'Ka — Coulomb：式(7.3-5)，背填土 ϕ、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）。地震時 KPE 依式(7.3-14)，亦可指定。' },
     { t: '2.1 擋土牆設計尺寸', open: true, f: [
       ['T', '(1) 牆身頂寬 T', 'm'], ['H', '(2) 牆體全高 H', 'm'], ['=h', '(3) 牆身高度 h', 'm'],
       ['=B', '(4) 基礎寬度 B', 'm'], ['C', '(5) 基礎趾長 C', 'm'], ['S', '(6) 牆身底寬 S', 'm'],
@@ -111,6 +113,16 @@
   const tag = ok => `<span class="tag ${ok ? 'ok' : 'ng'}">${ok ? 'OK' : 'NG'}</span>`;
   const eq = (lab, v, u = '', key = false) => `<div class="eq${key ? ' key' : ''}"><span>${lab}</span><span class="v">${v}</span><span class="u">${u}</span></div>`;
 
+  // ---------- 直式公式（MathML） ----------
+  const mT = str => str.replace(/(sin|cos)(²)?|([A-Za-zα-ωϕ])|(\d+)|(.)/g, (m, fn, sq, v, d, op) =>
+    fn ? (sq ? `<msup><mi>${fn}</mi><mn>2</mn></msup>` : `<mi>${fn}</mi>`) + '<mspace width="0.08em"/>' :
+      v ? `<mi>${v}</mi>` : d ? `<mn>${d}</mn>` : '()'.includes(op) ? `<mo stretchy="false" lspace="0" rspace="0">${op}</mo>` : `<mo>${op}</mo>`);
+  const mFrac = (a, b) => `<mfrac><mrow>${a}</mrow><mrow>${b}</mrow></mfrac>`;
+  const mBox = (sign, num, den) => `<msup><mrow><mo>[</mo><mn>1</mn><mo>${sign}</mo><msqrt><mfrac displaystyle="true"><mrow>${mT(num)}</mrow><mrow>${mT(den)}</mrow></mfrac></msqrt><mo>]</mo></mrow><mn>2</mn></msup>`;
+  const fx = (lhs, body, tag) => `<div class="fx"><math display="block"><mrow><msub><mi>K</mi><mi>${lhs}</mi></msub><mo>=</mo>${body}</mrow></math><span class="u">${tag}</span></div>`;
+  const FX_KAE = fx('AE', mFrac(mT('cos²(ϕ−θ−φ)'), mT('cosφ·cos²θ·cos(δ+φ+θ)') + mBox('+', 'sin(ϕ+δ)·sin(ϕ−φ−α)', 'cos(δ+φ+θ)·cos(θ−α)')), '式(7.3-12)');
+  const FX_KPE = fx('PE', mFrac(mT('cos²(ϕ+θ−φ)'), mT('cosφ·cos²θ·cos(δ−θ+φ)') + mBox('−', 'sin(ϕ+δ)·sin(ϕ−φ+α)', 'cos(δ−θ+φ)·cos(α−θ)')), '式(7.3-14)');
+
   // ---------- drawings ----------
   let mode = 'n';
   function drawSection(o) {
@@ -159,7 +171,8 @@
     h += `<tr class="sum"><td>Σ</td><td>${n(X.SV)}</td><td>${n(X.SH)}</td><td></td><td></td><td>${n(X.Mr)}</td><td>${n(X.Md)}</td></tr></tbody></table></div>`;
     return h;
   }
-  function stabReport(X, no, elim, kp) {
+  function stabReport(X, no, elim, kp, kfx = '') {
+    const slideHead = `<h3>${no}.4 抗滑動檢核（設止滑榫）</h3>${kfx}`;
     const ok = (b, s) => `${s}　${b ? 'OK!' : 'NG!'}`;
     return `<h3>${no}.2 抗傾覆檢核</h3>
       ${eq('FS = Mr / Md = ' + n(X.Mr) + ' / ' + n(X.Md), n(X.FSo), ok(X.okO, '≥ ' + n(X.fso, 1)), true)}
@@ -174,7 +187,7 @@
       ${eq('qt（趾端）', n(X.qt), 'tf/m²')}
       ${eq('qh（踵端）' + (Math.abs(X.e) > o.g.B / 6 ? '　※ |e|>B/6 採三角形分布' : ''), n(X.qh), 'tf/m²')}
       ${eq('FS = qu / max(qt, qh)', n(X.FSb), ok(X.okB, '≥ ' + n(X.fsb, 1)), true)}
-      <h3>${no}.4 抗滑動檢核（設止滑榫）</h3>
+      ${slideHead}
       <div class="sidefig"><div class="sf-main"><p class="note">設置剪力榫時，潛在滑動面為止滑榫前端之被動受剪區域。</p>
       ${eq(kp, n(X.Kp, 3), '', true)}
       ${eq('止滑榫位置 Kc ／ 尺寸 Kd', n(P.Kc) + ' / ' + n(P.Kd), 'm')}
@@ -209,13 +222,13 @@
   }
   function report() {
     const p = P, N = o.n, Q = o.e, g = o.g;
-    const kpLab = { rankine: 'Kp = tan²(45 + ϕ/2)（Rankine）', coulomb: `Kp（Coulomb，δp = ${n(p.deltaP, 1)}°）`, example: 'Kp（範例沿用法：背填土 ϕ、δ、牆背 θ）' }[p.kpm] + (p.kpOvr ? '（指定值）' : '');
+    const kpLab = (p.kpm === 'coulomb' ? `Kp（Coulomb，δp = ${n(p.deltaP, 1)}°）` : 'Kp = tan²(45 + ϕ/2)（Rankine）') + (N.kpOvr ? '（指定值）' : '');
     const kaLab = N.kaOvr ? 'Ka（指定值）' : p.kam === 'rankine'
       ? (N.alpha === 0 ? 'Ka = tan²(45 − ϕ/2)（Rankine，式(7.3-6)）' : 'Ka（Rankine 傾斜地表）')
       : 'Ka（Coulomb，式(7.3-5)）';
     const kaMeth = N.kaOvr ? '指定值' : p.kam === 'rankine' ? 'Rankine' : 'Coulomb';
     const inclLab = !N.kaOvr && p.kam === 'rankine' ? 'α' : 'δ+θ';
-    const kpeLab = (p.kpm === 'example' ? 'KPE（範例沿用法：靜態 Rankine）' : `KPE（第7.3.5節 式(7.3-14)，θ = α = 0，δ = ${n(p.kpm === 'coulomb' ? p.deltaP : 0, 1)}°，φ = ${n(o.e.vphi)}°）`) + (p.kpeOvr ? '（指定值）' : '');
+    const kpeLab = Q.kpeOvr ? 'KPE（指定值）' : `KPE（第7.3.5節，θ = α = 0，δ = ${n(Q.deltaP, 1)}°，φ = ${n(Q.vphi)}°）`;
     let h = `<p class="note">${p.id || ''}　H = ${n(p.H)} m</p>
     <h2>1. 設計依據</h2>
     <h3>1.1 材料參數</h3>
@@ -246,7 +259,7 @@
       <tr><td>抗傾覆</td><td>${n(p.fso_n, 1)}</td><td>${n(p.fso_e, 1)}</td></tr>
       <tr><td>抗承載</td><td>${n(p.fsb_n, 1)}</td><td>${n(p.fsb_e, 1)}</td></tr></tbody></table></div>
     <h3>1.7 保護層</h3>${eq("保護層厚度 d'", n(p.cover, 1), 'cm')}
-    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ', n(p.deltaR, 3), '')}${eq('主動土壓係數計算方法', kaMeth + (N.kaOvr ? '（Ka = ' + n(N.Ka, 3) + '）' : ''), '')}${eq('被動土壓係數計算方法', {rankine:'Rankine',coulomb:'Coulomb（δp = '+n(p.deltaP,1)+'°）',example:'範例沿用法'}[p.kpm], '')}
+    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ', n(p.deltaR, 3), '')}${eq('主動土壓係數計算方法', kaMeth + (N.kaOvr ? '（Ka = ' + n(N.Ka, 3) + '）' : ''), '')}${Q.kaeOvr ? eq('地震時主動土壓係數 KAE', '指定值 ' + n(Q.Kae, 3), '') : ''}${eq('被動土壓係數計算方法', p.kpm === 'coulomb' ? 'Coulomb（δp = ' + n(p.deltaP, 1) + '°）' : 'Rankine', '')}
 
     <h2>2. 擋土牆設計尺寸及分析結果</h2>
     <h3>2.1 擋土牆設計尺寸</h3>
@@ -285,9 +298,9 @@
     <p class="note">ϕ 為牆背土壤內摩擦角，φ 為地震合成角；θ 為牆背面與垂直面交角（逆時針為正），α 為牆背地表面與水平面之交角。本法原則上只適用於非凝聚性土壤。</p>
     ${eq('φ = tan⁻¹[kh/(1−kv)]', n(Q.vphi), '度')}
     ${eq('ϕ − φ − α', n(Q.crit), Q.okCrit ? '≥ 0 OK!' : '< 0 NG!（背填土失穩，KAE 無解）')}
-    <p class="note">KAE = cos²(ϕ−θ−φ) / { cosφ·cos²θ·cos(δ+φ+θ)·[1 + √( sin(ϕ+δ)·sin(ϕ−φ−α) / (cos(δ+φ+θ)·cos(θ−α)) )]² }　式(7.3-12)</p>
+    ${FX_KAE}
     ${eq('ϕ ／ δ ／ θ ／ α', `${n(N.phi, 1)} / ${n(N.delta, 1)} / ${n(N.theta, 1)} / ${n(N.alpha, 1)}`, '度')}
-    ${eq('KAE', n(Q.Kae, 3), '', true)}
+    ${eq(Q.kaeOvr ? `KAE（指定值；式(7.3-12) 計算值 = ${n(Q.KaeCalc, 3)}）` : 'KAE', n(Q.Kae, 3), '', true)}
     ${eq('PAE = ½·γ·H²·(1−kv)·KAE　式(7.3-11)（水位以下採浸水單位重，即 KAE(1−kv)·Σ）', n(Q.Pae), 'tf/m')}
     ${eq('ΔPAE = PAE − PA　式(解7.3-4)', n(Q.dPae), 'tf/m')}
     ${eq('PAEh = PAE·cos(δ+θ) ／ ΔPAEh', n(Q.Paeh) + ' / ' + n(Q.dPaeh), 'tf')}
@@ -298,7 +311,7 @@
     <p class="note">超載之動態增量作用點規範未另規定，比照 ΔPAE 之變位模式取用。</p>
     ${eq('PWE（含 Westergaard 動水壓，第7.3.6節）／ ywe', n(Q.Pwe) + ' / ' + n(Q.ywe), 'tf, m')}
     <h4>d. 作用力總表</h4><div class="sidefig"><div class="sf-main">${forceTable(o.items, Q.ext, 'e')}</div><div class="sf-fig">${RWDraw.blocks()}</div></div>
-    ${stabReport(Q, 4, 3, kpeLab)}
+    ${stabReport(Q, 4, 3, kpeLab, FX_KPE)}
 
     <h2>5. 配筋設計（USD）</h2>
     <h3>5.1 設計條件</h3>
@@ -338,7 +351,7 @@
   };
   document.getElementById('fileLoad').onchange = e => {
     const f = e.target.files[0]; if (!f) return;
-    f.text().then(t => { P = Object.assign(clone(RW.DEFAULTS), JSON.parse(t)); save(); buildForm(); run(); }).catch(() => alert('檔案格式錯誤'));
+    f.text().then(t => { P = fix(Object.assign(clone(RW.DEFAULTS), JSON.parse(t))); save(); buildForm(); run(); }).catch(() => alert('檔案格式錯誤'));
     e.target.value = '';
   };
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {

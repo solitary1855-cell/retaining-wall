@@ -22,7 +22,7 @@
     qs: 1.0, hw1r: 1 / 3, hw2: 0, wt: true,
     fc: 280, fy: 4200, code: 'hw', kh: 0.16, kv: 0.08, pgaH: 0.32, pgaV: 0.16, khRes: false, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
-    cover: 7.5, deltaR: 2 / 3, kam: 'coulomb', kaOvr: null, kpm: 'rankine', deltaP: 0, kpOvr: null, kpeOvr: null,
+    cover: 7.5, deltaR: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', deltaP: 0, kpOvr: null, kpeOvr: null,
     T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
@@ -129,7 +129,9 @@
     o.khS = (p.khRes ? 1.5 : 0.5) * p.pgaH; o.kvS = 0.5 * p.pgaV;
     Q.vphi = D(Math.atan(p.kh / (1 - p.kv)));
     Q.crit = N.phi - Q.vphi - N.alpha; Q.okCrit = Q.crit >= 0;
-    Q.Kae = moKae(N.phi, N.delta, N.theta, N.alpha, Q.vphi);
+    Q.KaeCalc = moKae(N.phi, N.delta, N.theta, N.alpha, Q.vphi);
+    Q.kaeOvr = useOvr(p.kaeOvr);
+    Q.Kae = Q.kaeOvr ? +p.kaeOvr : Q.KaeCalc;
     Q.Pae = Q.Kae * (1 - p.kv) * N.Ip; Q.Paeh = Q.Pae * cos(N.delta + N.theta); Q.Paev = Q.Pae * sin(N.delta + N.theta);
     Q.dPae = Q.Pae - N.Pa; Q.dPaeh = Q.Paeh - N.Pah;
     // 合力作用點 H̄：式(解7.3-5)、(解7.3-7)、對牆頂旋轉 0.55H
@@ -153,18 +155,12 @@
     Q.Md = p.kh * o.SWy + Q.Paeh * Q.yae + Q.Pqeh * Q.yqe + Q.Pwe * Q.ywe;
 
     // Kp
-    const kpCalc = () => {
-      if (p.kpm === 'rankine') return tan(45 + p.phiF / 2) ** 2;
-      if (p.kpm === 'coulomb') return coulombKp(p.phiF, p.deltaP, 0, 0);
-      return coulombKp(N.phi, N.delta, N.theta, N.alpha);
-    };
-    const kpeCalc = () => {
-      if (p.kpm === 'example') return tan(45 + N.phi / 2) ** 2;
-      // 止滑榫前緣為垂直面、地表水平：θ = α = 0
-      return moKpe(p.phiF, p.kpm === 'coulomb' ? p.deltaP : 0, 0, 0, Q.vphi);
-    };
-    N.Kp = isFinite(p.kpOvr) && p.kpOvr !== null && p.kpOvr !== '' ? +p.kpOvr : kpCalc();
-    Q.Kp = isFinite(p.kpeOvr) && p.kpeOvr !== null && p.kpeOvr !== '' ? +p.kpeOvr : kpeCalc();
+    // Kp：Rankine 或 Coulomb（承載層 ϕ、δp）；KPE：式(7.3-14)，止滑榫前緣為垂直面、地表水平（θ = α = 0）
+    if (p.kpm !== 'coulomb') p.kpm = 'rankine';
+    Q.deltaP = p.kpm === 'coulomb' ? p.deltaP : 0;
+    N.kpOvr = useOvr(p.kpOvr); Q.kpeOvr = useOvr(p.kpeOvr);
+    N.Kp = N.kpOvr ? +p.kpOvr : p.kpm === 'coulomb' ? coulombKp(p.phiF, p.deltaP, 0, 0) : tan(45 + p.phiF / 2) ** 2;
+    Q.Kp = Q.kpeOvr ? +p.kpeOvr : moKpe(p.phiF, Q.deltaP, 0, 0, Q.vphi);
 
     for (const [X, sfx, elim] of [[N, 'n', 6], [Q, 'e', 3]]) stability(X, p, g, sfx, elim);
 
