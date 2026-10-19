@@ -8,7 +8,7 @@
     try { const s = localStorage.getItem(KEY); if (s) return fix(Object.assign(clone(RW.DEFAULTS), JSON.parse(s))); } catch (e) {}
     return null;
   }
-  function fix(q) { if (q.kpm !== 'coulomb') q.kpm = 'rankine'; return q; }  // 已移除「範例沿用法」
+  function fix(q) { if (!['coulomb', 'ck'].includes(q.kpm)) q.kpm = 'rankine'; return q; }  // 已移除「範例沿用法」
   function save() { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {} }
 
   // ---------- form schema ----------
@@ -41,9 +41,9 @@
       ['kam', 'Ka 計算方法', '', 'select', [['coulomb', 'Coulomb'], ['rankine', 'Rankine']]],
       ['kaOvr', 'Ka 指定值（空白=計算）', '', 'opt'],
       ['kaeOvr', 'KAE 指定值（空白=計算）', '', 'opt'],
-      ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb']]],
+      ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb'], ['ck', 'Caquot-Kerisel']]],
       ['deltaP', '被動牆面摩擦角 δp', '度'], ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt']],
-      hint: 'Ka — Coulomb：式(7.3-5)，背填土 ϕ、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）。地震時 KPE 依式(7.3-14)，亦可指定。' },
+      hint: 'Ka — Coulomb：式(7.3-5)，背填土 ϕ、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp 不宜大於 2ϕ/3。地震時 KPE 依式(7.3-14)，亦可指定。' },
     { t: '2.1 擋土牆設計尺寸', open: true, f: [
       ['T', '(1) 牆身頂寬 T', 'm'], ['H', '(2) 牆體全高 H', 'm'], ['=h', '(3) 牆身高度 h', 'm'],
       ['=B', '(4) 基礎寬度 B', 'm'], ['C', '(5) 基礎趾長 C', 'm'], ['S', '(6) 牆身底寬 S', 'm'],
@@ -225,7 +225,9 @@
   }
   function report() {
     const p = P, N = o.n, Q = o.e, g = o.g;
-    const kpLab = (p.kpm === 'coulomb' ? `Kp（Coulomb，δp = ${n(p.deltaP, 1)}°）` : 'Kp = tan²(45 + ϕ/2)（Rankine）') + (N.kpOvr ? '（指定值）' : '');
+    const kpLab = (N.kpOvr ? 'Kp' : p.kpm === 'coulomb' ? `Kp（Coulomb，δp = ${n(p.deltaP, 1)}°）` : p.kpm === 'ck'
+      ? `Kp = R·Kp(δ/ϕ=−1)（Caquot-Kerisel，圖-解7.3-1；δp = ${n(p.deltaP, 1)}°，δ/ϕ = ${n(N.ck.rat, 3)}，R = ${n(N.ck.R, 3)}，Kp(δ/ϕ=−1) = tan²(45+ϕ/2)/R(0) = ${n(N.ck.Kp1, 3)}）`
+      : 'Kp = tan²(45 + ϕ/2)（Rankine）') + (N.kpOvr ? '（指定值）' : '');
     const kaLab = N.kaOvr ? 'Ka（指定值）' : p.kam === 'rankine'
       ? (N.alpha === 0 ? 'Ka = tan²(45 − ϕ/2)（Rankine，式(7.3-6)）' : 'Ka（Rankine 傾斜地表）')
       : 'Ka（Coulomb，式(7.3-5)）';
@@ -263,7 +265,7 @@
       <tr><td>抗傾覆</td><td>${n(p.fso_n, 1)}</td><td>${n(p.fso_e, 1)}</td></tr>
       <tr><td>抗承載</td><td>${n(p.fsb_n, 1)}</td><td>${n(p.fsb_e, 1)}</td></tr></tbody></table></div>
     <h3>1.7 保護層</h3>${eq("保護層厚度 d'", n(p.cover, 1), 'cm')}
-    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${eq('主動土壓係數計算方法', kaMeth + (N.kaOvr ? '（Ka = ' + n(N.Ka, 3) + '）' : ''), '')}${Q.kaeOvr ? eq('地震時主動土壓係數 KAE', '指定值 ' + n(Q.Kae, 3), '') : ''}${eq('被動土壓係數計算方法', p.kpm === 'coulomb' ? 'Coulomb（δp = ' + n(p.deltaP, 1) + '°）' : 'Rankine', '')}
+    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${eq('主動土壓係數計算方法', kaMeth + (N.kaOvr ? '（Ka = ' + n(N.Ka, 3) + '）' : ''), '')}${Q.kaeOvr ? eq('地震時主動土壓係數 KAE', '指定值 ' + n(Q.Kae, 3), '') : ''}${eq('被動土壓係數計算方法', p.kpm === 'coulomb' ? 'Coulomb（δp = ' + n(p.deltaP, 1) + '°）' : p.kpm === 'ck' ? 'Caquot-Kerisel（δp = ' + n(p.deltaP, 1) + '°）' : 'Rankine', '')}${p.kpm === 'ck' && !N.ck.inRange ? '<p class="note">※ 承載層 ϕ 超出圖-解7.3-1 表列範圍（10°～45°），以邊界值計算。</p>' : ''}${p.kpm !== 'rankine' && p.deltaP > 2 * p.phiF / 3 ? '<p class="note">※ δp 大於 2ϕ/3，第7.3.3節解說3規定設計採用之牆面摩擦角不宜大於 2ϕ/3。</p>' : ''}
 
     <h2>2. 擋土牆設計尺寸及分析結果</h2>
     <h3>2.1 擋土牆設計尺寸</h3>

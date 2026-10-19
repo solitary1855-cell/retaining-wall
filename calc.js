@@ -37,6 +37,24 @@
     return cos(phi - theta) ** 2 / (cos(theta) ** 2 * cos(delta + theta) *
       (1 + Math.sqrt(Math.max(0, sin(phi + delta) * sin(phi - alpha)) / (cos(delta + theta) * cos(theta - alpha)))) ** 2);
   }
+  // Caquot-Kerisel 被動土壓力係數（牆面垂直、地表水平）：依基礎規範(112) 圖-解7.3-1（NAVFAC DM7.2）
+  // Kp = R(ϕ, −δ/ϕ)·Kp(δ/ϕ=−1)；δ = 0 時 Caquot-Kerisel 解即 Rankine，故 Kp(δ/ϕ=−1) = tan²(45+ϕ/2) / R(ϕ, 0)
+  const CK_PHI = [10, 15, 20, 25, 30, 35, 40, 45], CK_RAT = [-0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0];
+  const CK_R = [
+    [.978, .962, .946, .929, .912, .898, .881, .864], [.961, .934, .907, .881, .854, .830, .803, .775],
+    [.939, .901, .862, .824, .787, .752, .716, .678], [.912, .860, .808, .759, .711, .666, .620, .574],
+    [.878, .811, .746, .686, .627, .574, .520, .467], [.836, .752, .674, .603, .536, .475, .417, .362],
+    [.783, .682, .592, .512, .439, .375, .316, .262], [.718, .600, .500, .414, .339, .276, .221, .174]];
+  const lerp = (xs, ys, x) => { if (x <= xs[0]) return ys[0]; for (let i = 1; i < xs.length; i++) if (x <= xs[i]) return ys[i - 1] + (ys[i] - ys[i - 1]) * (x - xs[i - 1]) / (xs[i] - xs[i - 1]); return ys[ys.length - 1]; };
+  function ckR(phi, rat) {   // rat = −δ/ϕ ∈ [−1, 0]；−1～−0.7 之間以 R(−1) = 1 線性內插
+    const row = r => rat >= -0.7 ? lerp(CK_RAT, r, rat) : lerp([-1, -0.7], [1, r[0]], rat);
+    return lerp(CK_PHI, CK_R.map(row), phi);
+  }
+  function ckKp(phi, delta) {
+    const ph = Math.min(45, Math.max(10, phi)), rat = -Math.min(1, Math.abs(delta) / ph);
+    const R = ckR(ph, rat), R0 = ckR(ph, 0), Kp1 = tan(45 + ph / 2) ** 2 / R0;
+    return { Kp: R * Kp1, R, R0, Kp1, rat, inRange: phi >= 10 && phi <= 45 };
+  }
   // Rankine 主動土壓力係數；α = 0 時即式(7.3-6) tan²(45 − ϕ/2)，合力平行地表（傾角 α）
   function rankineKa(phi, alpha) {
     const r = Math.sqrt(Math.max(0, cos(alpha) ** 2 - cos(phi) ** 2));
@@ -173,10 +191,11 @@
 
     // Kp
     // Kp：Rankine 或 Coulomb（承載層 ϕ、δp）；KPE：式(7.3-14)，止滑榫前緣為垂直面、地表水平（θ = α = 0）
-    if (p.kpm !== 'coulomb') p.kpm = 'rankine';
-    Q.deltaP = p.kpm === 'coulomb' ? p.deltaP : 0;
+    if (!['coulomb', 'ck'].includes(p.kpm)) p.kpm = 'rankine';
+    Q.deltaP = p.kpm === 'rankine' ? 0 : p.deltaP;
     N.kpOvr = useOvr(p.kpOvr); Q.kpeOvr = useOvr(p.kpeOvr);
-    N.Kp = N.kpOvr ? +p.kpOvr : p.kpm === 'coulomb' ? coulombKp(p.phiF, p.deltaP, 0, 0) : tan(45 + p.phiF / 2) ** 2;
+    N.ck = p.kpm === 'ck' ? ckKp(p.phiF, p.deltaP) : null;
+    N.Kp = N.kpOvr ? +p.kpOvr : p.kpm === 'coulomb' ? coulombKp(p.phiF, p.deltaP, 0, 0) : p.kpm === 'ck' ? N.ck.Kp : tan(45 + p.phiF / 2) ** 2;
     Q.Kp = Q.kpeOvr ? +p.kpeOvr : moKpe(p.phiF, Q.deltaP, 0, 0, Q.vphi);
 
     for (const [X, sfx, elim] of [[N, 'n', 6], [Q, 'e', 3]]) stability(X, p, g, sfx, elim);
@@ -301,5 +320,5 @@
     X.FSs = X.Hu / X.SH; X.okS = X.FSs >= X.fss;
   }
 
-  root.RW = { compute, DEFAULTS, CODES, BARS, NTAB, MVM, moKae, moKpe };
+  root.RW = { compute, DEFAULTS, CODES, BARS, NTAB, MVM, moKae, moKpe, ckKp };
 })(typeof window !== 'undefined' ? window : globalThis);
