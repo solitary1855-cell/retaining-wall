@@ -22,7 +22,7 @@
     qs: 1.0, hw1r: 1 / 3, hw2: 0, wt: true,
     fc: 280, fy: 4200, code: 'hw', kh: 0.16, kv: 0.08, pgaH: 0.32, pgaV: 0.16, khRes: false, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
-    cover: 7.5, deltaR: 2 / 3, kpm: 'rankine', deltaP: 0, kpOvr: null, kpeOvr: null,
+    cover: 7.5, deltaR: 2 / 3, kam: 'coulomb', kaOvr: null, kpm: 'rankine', deltaP: 0, kpOvr: null, kpeOvr: null,
     T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
@@ -33,6 +33,11 @@
   function coulombKa(phi, delta, theta, alpha) {
     return cos(phi - theta) ** 2 / (cos(theta) ** 2 * cos(delta + theta) *
       (1 + Math.sqrt(Math.max(0, sin(phi + delta) * sin(phi - alpha)) / (cos(delta + theta) * cos(theta - alpha)))) ** 2);
+  }
+  // Rankine 主動土壓力係數；α = 0 時即式(7.3-6) tan²(45 − ϕ/2)，合力平行地表（傾角 α）
+  function rankineKa(phi, alpha) {
+    const r = Math.sqrt(Math.max(0, cos(alpha) ** 2 - cos(phi) ** 2));
+    return cos(alpha) * (cos(alpha) - r) / (cos(alpha) + r);
   }
   // 建築物基礎構造設計規範(112) 式(7.3-12)：ϕ=內摩擦角、φ=地震合成角(此處參數名 vphi)
   // 若 ϕ−φ−α < 0（背填土失穩），根號項取 0 並由 Q.okCrit 標示 NG
@@ -73,12 +78,16 @@
     const N = o.n = {};
     N.phi = p.phiB; N.delta = p.deltaR * p.phiB; N.theta = D(Math.atan(g.eta));
     N.alpha = p.n === 0 ? 0 : D(Math.atan(1 / p.n));
-    N.Ka = coulombKa(N.phi, N.delta, N.theta, N.alpha);
+    const useOvr = v => v !== null && v !== undefined && v !== '' && isFinite(v);
+    N.kaOvr = useOvr(p.kaOvr);
+    N.Ka = N.kaOvr ? +p.kaOvr : p.kam === 'rankine' ? rankineKa(N.phi, N.alpha) : coulombKa(N.phi, N.delta, N.theta, N.alpha);
+    // 合力傾角（自水平）：Coulomb 為 δ+θ；Rankine 平行地表為 α
+    N.incl = !N.kaOvr && p.kam === 'rankine' ? N.alpha : N.delta + N.theta;
     N.H1 = Math.max(0, p.H - o.hw1);
     const gB = p.gB, gp = p.gB - p.gW, hw1 = o.hw1;
     N.Ip = 0.5 * gB * N.H1 ** 2 + gB * N.H1 * hw1 + 0.5 * gp * hw1 ** 2;
     N.Ipm = 0.5 * gB * N.H1 ** 2 * (hw1 + N.H1 / 3) + gB * N.H1 * hw1 * hw1 / 2 + 0.5 * gp * hw1 ** 3 / 3;
-    N.Pa = N.Ka * N.Ip; N.Pah = N.Pa * cos(N.delta + N.theta); N.Pav = N.Pa * sin(N.delta + N.theta);
+    N.Pa = N.Ka * N.Ip; N.Pah = N.Pa * cos(N.incl); N.Pav = N.Pa * sin(N.incl);
     N.ya = N.Ipm / N.Ip; N.xa = B;
     N.Pqh = p.qs * N.Ka * p.H; N.yq = p.H / 2; N.Pqv = p.qs * g.Ws; N.xq = p.C + p.T + g.Ws / 2;
     N.Pw = 0.5 * p.gW * (hw1 ** 2 - p.hw2 ** 2);
@@ -162,7 +171,7 @@
     // ---------- 配筋 ----------
     const bar = k => { const b = p.bars[k]; const Ab = BARS[b.D] || 0; return { Ab, As: Ab * 100 / b.s }; };
     o.bar = {}; for (const k of Object.keys(p.bars)) o.bar[k] = bar(k);
-    const KAH = N.Ka * cos(N.delta + N.theta), KAEH = Q.Kae * (1 - p.kv) * cos(N.delta + N.theta);
+    const KAH = N.Ka * cos(N.incl), KAEH = Q.Kae * (1 - p.kv) * cos(N.delta + N.theta);
     o.KAH = KAH; o.KAEH = KAEH; o.m = p.fy / (0.85 * p.fc);
     const zw = Math.max(0, p.H - hw1);
     function stem(z) {
