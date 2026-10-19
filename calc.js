@@ -20,7 +20,7 @@
     id: 'RW-1',
     gB: 1.91, phiB: 30, cB: 0, gF: 1.97, phiF: 29, cF: 1, gC: 2.4, gW: 1.0,
     qs: 1.0, hw1r: 1 / 3, hw2: 0, wt: true,
-    fc: 280, fy: 4200, code: 'hw', kh: 0.16, kv: 0.08,
+    fc: 280, fy: 4200, code: 'hw', kh: 0.16, kv: 0.08, pgaH: 0.32, pgaV: 0.16, khRes: false, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
     cover: 7.5, deltaR: 2 / 3, kpm: 'rankine', deltaP: 0, kpOvr: null, kpeOvr: null,
     T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
@@ -34,18 +34,27 @@
     return cos(phi - theta) ** 2 / (cos(theta) ** 2 * cos(delta + theta) *
       (1 + Math.sqrt(Math.max(0, sin(phi + delta) * sin(phi - alpha)) / (cos(delta + theta) * cos(theta - alpha)))) ** 2);
   }
-  function moKae(phi, delta, theta, alpha, psi) {
-    return cos(phi - theta - psi) ** 2 / (cos(psi) * cos(theta) ** 2 * cos(delta + theta + psi) *
-      (1 + Math.sqrt(Math.max(0, sin(phi + delta) * sin(phi - psi - alpha)) / (cos(delta + theta + psi) * cos(theta - alpha)))) ** 2);
+  // 建築物基礎構造設計規範(112) 式(7.3-12)：ϕ=內摩擦角、φ=地震合成角(此處參數名 vphi)
+  // 若 ϕ−φ−α < 0（背填土失穩），根號項取 0 並由 Q.okCrit 標示 NG
+  function moKae(phi, delta, theta, alpha, vphi) {
+    return cos(phi - theta - vphi) ** 2 / (cos(vphi) * cos(theta) ** 2 * cos(delta + vphi + theta) *
+      (1 + Math.sqrt(Math.max(0, sin(phi + delta) * sin(phi - vphi - alpha)) / (cos(delta + vphi + theta) * cos(theta - alpha)))) ** 2);
   }
   function coulombKp(phi, delta, theta, alpha) {
     return cos(phi + theta) ** 2 / (cos(theta) ** 2 * cos(delta - theta) *
       (1 - Math.sqrt(sin(phi + delta) * sin(phi + alpha) / (cos(delta - theta) * cos(alpha - theta)))) ** 2);
   }
-  function moKpe(phi, delta, psi) {
-    return cos(phi - psi) ** 2 / (cos(psi) * cos(delta + psi) *
-      (1 - Math.sqrt(Math.max(0, sin(phi + delta) * sin(phi - psi)) / cos(delta + psi))) ** 2);
+  // 建築物基礎構造設計規範(112) 式(7.3-14)
+  function moKpe(phi, delta, theta, alpha, vphi) {
+    return cos(phi + theta - vphi) ** 2 / (cos(vphi) * cos(theta) ** 2 * cos(delta - theta + vphi) *
+      (1 - Math.sqrt(Math.max(0, sin(phi + delta) * sin(phi - vphi + alpha)) / (cos(delta - theta + vphi) * cos(alpha - theta)))) ** 2);
   }
+  // 第7.3.4節解說2：牆體變位模式與作用點（自基礎底面，以 H 之倍數表示）
+  const MVM = {
+    rotBase: { name: '對牆底旋轉', s: null, d: 2 / 3 },   // PA 於 H/3（本程式取靜態土壓實際形心），ΔPAE 於 2H/3
+    slide: { name: '滑移', s: 0.42, d: 0.48 },            // PA 於 0.42H，ΔPAE 於 0.48H
+    rotTop: { name: '對牆頂旋轉', s: null, d: null, t: 0.55 } // PAE 於 0.55H
+  };
 
   function compute(inp) {
     const p = Object.assign({}, inp);
@@ -106,18 +115,27 @@
 
     // ---------- 地震 ----------
     const Q = o.e = {};
-    Q.psi = D(Math.atan(p.kh / (1 - p.kv)));
-    Q.Kae = moKae(N.phi, N.delta, N.theta, N.alpha, Q.psi);
+    const mv = o.mv = MVM[p.mvm] || MVM.rotBase;
+    // 第7.3.4節解說3：kh 取地表水平向尖峰加速度之半（側向位移完全受限取1.5倍）；kv 取垂直向之半
+    o.khS = (p.khRes ? 1.5 : 0.5) * p.pgaH; o.kvS = 0.5 * p.pgaV;
+    Q.vphi = D(Math.atan(p.kh / (1 - p.kv)));
+    Q.crit = N.phi - Q.vphi - N.alpha; Q.okCrit = Q.crit >= 0;
+    Q.Kae = moKae(N.phi, N.delta, N.theta, N.alpha, Q.vphi);
     Q.Pae = Q.Kae * (1 - p.kv) * N.Ip; Q.Paeh = Q.Pae * cos(N.delta + N.theta); Q.Paev = Q.Pae * sin(N.delta + N.theta);
-    Q.yae = (N.Pah * N.ya + (Q.Paeh - N.Pah) * 2 * p.H / 3) / Q.Paeh; Q.xae = B;
+    Q.dPae = Q.Pae - N.Pa; Q.dPaeh = Q.Paeh - N.Pah;
+    // 合力作用點 H̄：式(解7.3-5)、(解7.3-7)、對牆頂旋轉 0.55H
+    const hbar = (S, yS, T) => T === 0 ? 0 : mv.t ? mv.t * p.H :
+      (S * (mv.s === null ? yS : mv.s * p.H) + (T - S) * mv.d * p.H) / T;
+    Q.yae = hbar(N.Pah, N.ya, Q.Paeh); Q.xae = B;
     Q.Pqeh = p.qs * Q.Kae * (1 - p.kv) * p.H;
-    Q.yqe = Q.Pqeh === 0 ? 0 : (N.Pqh * N.yq + (Q.Pqeh - N.Pqh) * 2 * p.H / 3) / Q.Pqeh;
+    // 超載：靜態部分維持 H/2，動態增量依變位模式（規範未另規定，比照 ΔPAE）
+    Q.yqe = Q.Pqeh === 0 ? 0 : mv.t ? mv.t * p.H : (N.Pqh * N.yq + (Q.Pqeh - N.Pqh) * mv.d * p.H) / Q.Pqeh;
     Q.Pqev = N.Pqv; Q.xqe = N.xq;
     const dPw = 7 / 12 * p.kh * p.gW * hw1 ** 2;
     Q.Pwe = N.Pw + dPw; Q.ywe = Q.Pwe === 0 ? 0 : (N.Pw * N.yw + dPw * 0.4 * hw1) / Q.Pwe;
     Q.Pbe = N.Pb; Q.xbe = N.xb;
     Q.ext = [
-      { name: 'Paeh 動態土壓水平', H: Q.Paeh, y: Q.yae }, { name: 'Paev 動態土壓垂直', V: Q.Paev, x: Q.xae },
+      { name: 'PAEh 動態主動土壓水平', H: Q.Paeh, y: Q.yae }, { name: 'PAEv 動態主動土壓垂直', V: Q.Paev, x: Q.xae },
       { name: 'Pqeh 超載水平', H: Q.Pqeh, y: Q.yqe }, { name: 'Pqev 超載垂直', V: Q.Pqev, x: Q.xqe },
       { name: 'Pwe 水壓', H: Q.Pwe, y: Q.ywe }, { name: 'Pbe 揚壓力', V: -Q.Pbe, x: Q.xbe }];
     Q.SV = o.SW * (1 - p.kv) + Q.Paev + Q.Pqev - Q.Pbe;
@@ -133,7 +151,8 @@
     };
     const kpeCalc = () => {
       if (p.kpm === 'example') return tan(45 + N.phi / 2) ** 2;
-      return moKpe(p.phiF, p.kpm === 'coulomb' ? p.deltaP : 0, Q.psi);
+      // 止滑榫前緣為垂直面、地表水平：θ = α = 0
+      return moKpe(p.phiF, p.kpm === 'coulomb' ? p.deltaP : 0, 0, 0, Q.vphi);
     };
     N.Kp = isFinite(p.kpOvr) && p.kpOvr !== null && p.kpOvr !== '' ? +p.kpOvr : kpCalc();
     Q.Kp = isFinite(p.kpeOvr) && p.kpeOvr !== null && p.kpeOvr !== '' ? +p.kpeOvr : kpeCalc();
@@ -153,12 +172,15 @@
       const Fw = p.gW * d * d / 2, Mw = p.gW * d ** 3 / 6;
       const Fq = p.qs * N.Ka * z, Mq = p.qs * N.Ka * z * z / 2;
       const rat = KAEH / KAH - 1, dFq = (p.qs * Q.Kae * (1 - p.kv) - p.qs * N.Ka) * z, dFw = 7 / 12 * p.kh * p.gW * d * d;
+      // 斷面以上土壓之作用點依變位模式（z 取代 H）
+      const MeSoil = mv.t ? Fe * (1 + rat) * mv.t * z : (mv.s === null ? Me : Fe * mv.s * z) + Fe * rat * mv.d * z;
+      const MqE = mv.t ? (Fq + dFq) * mv.t * z : Mq + dFq * mv.d * z;
       const Wst = (T * z + 0.5 * (S - T) * z * z / h) * gc + 0.5 * (S - T) * z * z / h * gB;
       const Mst = (T * z * z / 2 + 0.5 * (S - T) * z ** 3 / (3 * h)) * gc + 0.5 * (S - T) * z ** 3 / (3 * h) * gB;
       return {
         Vn: Fe + Fw + Fq, Mn: Me + Mw + Mq,
         Ve: Fe * (1 + rat) + Fw + dFw + Fq + dFq + p.kh * Wst,
-        Me: Me + Fe * rat * 2 * z / 3 + Mw + dFw * 0.4 * d + Mq + dFq * 2 * z / 3 + p.kh * Mst
+        Me: MeSoil + Mw + dFw * 0.4 * d + MqE + p.kh * Mst
       };
     }
     function design(title, z, t, f, Asp, desc) {
@@ -202,7 +224,7 @@
       { k: 'T2', title: '基礎溫度鋼筋 T2（雙面）', rho: cf.t2, Asr: cf.t2 * 100 * tav * 100, Asp: 2 * As('T2'), basis: `ρt·b·tav，tav = ${(tav * 100).toFixed(1)} cm` }
     ].map(x => ({ ...x, ok: x.Asp >= x.Asr }));
 
-    const checks = [N.okO, N.okE, N.okB, N.okS, Q.okO, Q.okE, Q.okB, Q.okS,
+    const checks = [N.okO, N.okE, N.okB, N.okS, Q.okO, Q.okE, Q.okB, Q.okS, Q.okCrit,
       ...o.rc.map(r => r.okV && r.okM), ...o.min.map(m => m.ok)];
     o.allOK = checks.every(Boolean);
     return o;
@@ -240,5 +262,5 @@
     X.FSs = X.Hu / X.SH; X.okS = X.FSs >= X.fss;
   }
 
-  root.RW = { compute, DEFAULTS, CODES, BARS, NTAB };
+  root.RW = { compute, DEFAULTS, CODES, BARS, NTAB, MVM, moKae, moKpe };
 })(typeof window !== 'undefined' ? window : globalThis);
