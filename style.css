@@ -241,3 +241,9 @@ details.grp > summary::-webkit-details-marker { display: none; }
 @media (max-width: 1100px) { .sidefig { flex-direction: column; } .sf-fig { flex-basis: auto; width: 100%; max-width: 480px; } }
 @media print { .sidefig { flex-direction: row; } .sf-fig { flex: 0 0 38%; } }
 @media (max-width: 600px) { .report .fx math { font-size: 0.9em; } }
+
+/* 參數代號上下標 */
+.sym { white-space: nowrap; }
+.sym sub, .sym sup { font-size: 72%; line-height: 0; }
+.sym sub { vertical-align: -0.28em; }
+.sym sup { vertical-align: 0.45em; margin-right: -0.05em; }

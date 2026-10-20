@@ -133,7 +133,7 @@
   document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
     mode = b.dataset.mode;
     document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b));
-    drawSection(o);
+    drawSection(o); fmtSymbols(document.querySelector('.figs'));
   });
 
   // ---------- summary ----------
@@ -184,7 +184,7 @@
       ${eq(`Nc = ${n(X.Nc, 1)}，Nq = ${n(X.Nq, 1)}，Nγ = ${n(X.Nr, 1)}（表4.3-1，ϕ = ${X.phiT}°）`, '', '')}
       ${eq('載重傾角 β = atan(ΣH/ΣV)', n(X.beta), '度')}
       ${eq("q = γ2·Df'（Df' = Y）", n(X.q), 'tf/m²')}
-      ${eq('qu = cNcFcdFci + qNqFqdFqi + ½γ1BNγFrdFri', n(X.qu), 'tf/m²', true)}
+      ${eq('qu = c·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·γ1·B·Nγ·Frd·Fri', n(X.qu), 'tf/m²', true)}
       ${eq('qt（趾端）', n(X.qt), 'tf/m²')}
       ${eq('qh（踵端）' + (Math.abs(X.e) > o.g.B / 6 ? '　※ |e|>B/6 採三角形分布' : ''), n(X.qh), 'tf/m²')}
       ${eq('FS = qu / max(qt, qh)', n(X.FSb), ok(X.okB, '≥ ' + n(X.fsb, 1)), true)}
@@ -346,11 +346,12 @@
       <p class="hint">D=靜載重　L=活載重　H=土壓力　F=水壓力　EQ=地震力</p>
       <table class="kv"><tbody><tr><td>強度折減因子 φb ／ φv</td><td class="num">${n(o.cf.pb)} / ${n(o.cf.pv)}</td></tr></tbody></table>`;
     summary(); drawSection(o); report();
+    fmtSymbols(document.querySelector('.right')); fmtSymbols(document.getElementById('combo'));
   }
 
   // ---------- actions ----------
   document.getElementById('btnPrint').onclick = () => window.print();
-  document.getElementById('btnReset').onclick = () => { P = clone(RW.DEFAULTS); save(); buildForm(); run(); };
+  document.getElementById('btnReset').onclick = () => { P = clone(RW.DEFAULTS); save(); buildForm(); fmtSymbols(form); run(); };
   document.getElementById('btnSave').onclick = () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }));
@@ -358,7 +359,7 @@
   };
   document.getElementById('fileLoad').onchange = e => {
     const f = e.target.files[0]; if (!f) return;
-    f.text().then(t => { P = fix(Object.assign(clone(RW.DEFAULTS), JSON.parse(t))); save(); buildForm(); run(); }).catch(() => alert('檔案格式錯誤'));
+    f.text().then(t => { P = fix(Object.assign(clone(RW.DEFAULTS), JSON.parse(t))); save(); buildForm(); fmtSymbols(form); run(); }).catch(() => alert('檔案格式錯誤'));
     e.target.value = '';
   };
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
@@ -388,5 +389,5 @@
     applyTheme();
   };
   applyTheme();
-  buildForm(); run(); setTop();
+  buildForm(); fmtSymbols(form); run(); setTop();
 })();
