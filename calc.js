@@ -36,7 +36,7 @@
     // 預設條件比照「道路工程參考圖」R-008：背填土 γ=1.9、活載重相當 60cm 土重、Z=0.33、f'c=210、牆背設濾層洩水（不計水位）；
     // 承載層採緊密礫石級配（R-008 附註10：承載力不足時挖除以礫石級配回填）
     gB: 1.9, phiB: 30, cB: 0, gF: 2.1, phiF: 38, cF: 0, gC: 2.4, gW: 1.0,
-    qs: 1.14, qsType: 'L', hw1r: 0, hw2: 0, wt: false,
+    qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
     fc: 210, fy: 4200, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
     cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', deltaP: 0, kpOvr: null, kpeOvr: null,
@@ -112,6 +112,12 @@
     g.Ws = g.B - p.C - p.T;
     const B = g.B, h = g.h;
     o.hw1 = p.hw1r * p.H;
+    // 牆前水位 Hw2（自基底）：空白＝無地下水；正值＝基底以上水深；負值＝水位在基底以下 |Hw2|
+    const hw2 = (p.hw2 === null || p.hw2 === undefined || p.hw2 === '' || !isFinite(p.hw2)) ? null : +p.hw2;
+    o.hw2 = hw2; g.h2 = Math.max(0, hw2 ?? 0);
+    g.dw = hw2 === null ? Infinity : Math.max(0, -hw2);   // 基底至地下水位深度
+    // 式(4.3-1) γ1：基礎板底以下 B 深度範圍內之平均單位重，水位以下取有效單位重
+    g.g1 = g.dw >= B ? p.gF : (p.gF - p.gW) + g.dw / B * p.gW;
     o.rhoMin = p.code === 'hw' ? 14 / p.fy : Math.max(0.8 * Math.sqrt(p.fc) / p.fy, 14 / p.fy);
 
     // ---------- 常時 ----------
@@ -130,10 +136,11 @@
     N.Pa = N.Ka * N.Ip; N.Pah = N.Pa * cos(N.incl); N.Pav = N.Pa * sin(N.incl);
     N.ya = N.Ipm / N.Ip; N.xa = B;
     N.Pqh = p.qs * N.Ka * p.H; N.yq = p.H / 2; N.Pqv = p.qs * g.Ws; N.xq = p.C + p.T + g.Ws / 2;
-    N.Pw = 0.5 * p.gW * (hw1 ** 2 - p.hw2 ** 2);
-    N.yw = N.Pw === 0 ? 0 : p.gW * (hw1 ** 3 - p.hw2 ** 3) / 6 / N.Pw;
-    N.Pb = p.gW * (hw1 + p.hw2) / 2 * B;
-    N.xb = hw1 + p.hw2 === 0 ? B / 2 : B * (p.hw2 + 2 * hw1) / (3 * (hw1 + p.hw2));
+    const h2 = g.h2;
+    N.Pw = 0.5 * p.gW * (hw1 ** 2 - h2 ** 2);
+    N.yw = N.Pw === 0 ? 0 : p.gW * (hw1 ** 3 - h2 ** 3) / 6 / N.Pw;
+    N.Pb = p.gW * (hw1 + h2) / 2 * B;
+    N.xb = hw1 + h2 === 0 ? B / 2 : B * (h2 + 2 * hw1) / (3 * (hw1 + h2));
     const ta = tan(N.alpha), C = p.C, S = p.S, T = p.T, E = p.E, D1 = p.D1, D2 = p.D2, gc = p.gC;
     o.items = [
       ['(1) 牆身矩形', T * h * gc, C + T / 2, D1 + D2 + h / 2],
@@ -148,7 +155,7 @@
       ['(10) 牆背斜面上填土', 0.5 * (S - T) * h * gB, C + T + 2 * (S - T) / 3, D1 + D2 + 2 * h / 3],
       ['(11) 踵版斜坡上填土', 0.5 * E * D1 * gB, C + S + 2 * E / 3, D2 + 2 * D1 / 3],
       ['(12) 趾版上覆土', C * (p.Df - D1 / 2) * p.gF, C / 2, D2 + p.Df / 2],
-      ['(13) 牆前積水', p.gW * Math.max(0, p.hw2 - g.Y) * C, C / 2, g.Y + Math.max(0, p.hw2 - g.Y) / 2]
+      ['(13) 牆前積水', p.gW * Math.max(0, g.h2 - g.Y) * C, C / 2, g.Y + Math.max(0, g.h2 - g.Y) / 2]
     ].map(([name, W, x, y]) => ({ name, W, x, y }));
     o.SW = o.items.reduce((a, b) => a + b.W, 0);
     o.SWx = o.items.reduce((a, b) => a + b.W * b.x, 0);
@@ -323,8 +330,8 @@
     X.e = B / 2 - (X.Mr - X.Md) / X.SV; X.elim = elim; X.okE = Math.abs(X.e) <= B / elim;
     X.phiT = Math.min(40, Math.floor(p.phiF));
     [X.Nc, X.Nq, X.Nr] = NTAB[X.phiT];
-    X.g1 = p.wt ? p.gF - p.gW : p.gF;
-    X.q = p.gF * g.Y - p.gW * Math.min(g.Y, p.hw2);
+    X.g1 = g.g1;
+    X.q = p.gF * g.Y - p.gW * Math.min(g.Y, g.h2);
     X.beta = D(Math.atan(X.SH / X.SV));
     const kp = tan(45 + p.phiF / 2);
     X.Fcd = p.phiF >= 10 ? 1 + 0.2 * g.Y / B * kp : Math.min(1.5, 1 + 0.2 * g.Y / B);
@@ -338,7 +345,11 @@
     else { X.qt = 0; X.qh = 2 * X.SV / (3 * (B / 2 + X.e)); }
     X.qmax = Math.max(X.qt, X.qh);
     X.FSb = X.qu / X.qmax; X.okB = X.FSb >= X.fsb;
-    X.gp = p.wt ? p.gF - p.gW : p.gF;
+    // 被動土壓：止滑榫範圍（趾地面下 Y～Y+Kd）依地下水位分段計算有效垂直應力 σ'v = γz − γw·max(0, z − zw)
+    const zw = g.dw === Infinity ? Infinity : Math.max(0, g.Y - (g.h2 > 0 ? g.h2 : -g.dw)), z1 = g.Y, z2 = g.Y + p.Kd;
+    const sq = z => Math.max(0, z - zw) ** 2;
+    const I = p.gF * (z2 * z2 - z1 * z1) / 2 - p.gW * (sq(z2) - sq(z1)) / 2;
+    X.gp = p.Kd > 0 ? I / ((g.Y + p.Kd / 2) * p.Kd) : p.gF;   // 等效單位重
     X.Pp = X.gp * (g.Y + p.Kd / 2) * X.Kp * p.Kd;
     X.Lp = B - 2 * Math.abs(X.e);
     X.L1 = Math.min(p.Kc, p.Kd / tan(45 - p.phiF / 2), X.Lp);

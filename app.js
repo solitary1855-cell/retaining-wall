@@ -8,7 +8,10 @@
     try { const s = localStorage.getItem(KEY); if (s) return fix(Object.assign(clone(RW.DEFAULTS), JSON.parse(s))); } catch (e) {}
     return null;
   }
-  function fix(q) { if (!['coulomb', 'ck'].includes(q.kpm)) q.kpm = 'rankine'; return q; }  // 已移除「範例沿用法」
+  function fix(q) {
+    if (!['coulomb', 'ck'].includes(q.kpm)) q.kpm = 'rankine';
+    if ('wt' in q) { if (!q.wt && +q.hw2 === 0) q.hw2 = null; delete q.wt; }   // 已移除「基底位於地下水位下」，改由 Hw2 判斷
+    return q; }  // 已移除「範例沿用法」
   function save() { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {} }
 
   // ---------- 建議尺寸（依牆高 H） ----------
@@ -90,7 +93,8 @@
       ['qs', '牆背地表超載 qs', 'tf/m²'],
       ['qsType', '超載性質（配筋載重組合）', '', 'select', [['L', '活載重 L'], ['D', '永久載重（歸 D、H）']]],
       ['hw1r', '牆背水位比 Hw1/H', ''], ['=hw1', '牆背水位 Hw1', 'm'],
-      ['hw2', '牆前水位 Hw2（自基底）', 'm'], ['wt', '基底位於地下水位下', '', 'bool']] },
+      ['hw2', '牆前水位 Hw2（自基底）', 'm', 'opt'], ['=g1', '承載層平均單位重 γ1', 'tf/m³']],
+      hint: 'Hw2 空白＝無地下水；正值＝基底以上水深；負值＝水位位於基底以下之深度。γ1 依基礎規範(112) 式(4.3-1)，取基底下 B 深度範圍內平均單位重（水位以下採有效單位重）自動計算。' },
     { t: '4. 載重組合（含配筋規範與強度折減因子）', info: 'combo', f: [
       ['code', '配筋規範', '', 'select', [['hw', '公路橋梁設計規範'], ['c112', '112年建築物基礎構造設計規範']]]],
       hint: '係數依所選規範自動帶入。公路橋梁設計規範：第3.23節表3.3。112年建築物基礎構造設計規範：第2.11節規定基礎構材以極限強度法設計時依「建築構造編」辦理，載重組合依112年建築物混凝土結構設計規範表5.3.1及第5.3.6、5.3.7節。組合內容見下表。' },
@@ -268,7 +272,7 @@
       ${eq(kp, n(X.Kp, 3), '', true)}
       ${eq('止滑榫位置 Kc ／ 尺寸 Kd', n(P.Kc) + ' / ' + n(P.Kd), 'm')}
       ${eq('趾地覆土深度 D = Y + Kd', n(o.g.Y + P.Kd), 'm')}
-      ${eq('被動區單位重 γp', n(X.gp), 'tf/m³')}
+      ${eq(o.hw2 === null || o.g.Y + P.Kd <= o.g.Y - o.hw2 ? '被動區單位重 γp' : '被動區等效單位重 γp（依水位分段計算有效應力）', n(X.gp), 'tf/m³')}
       ${eq('Pp = γp(Y + Kd/2)·Kp·Kd', n(X.Pp), 'tf')}
       ${eq("L' = B − 2|e|", n(X.Lp), 'm')}
       ${eq('L1 = min(Kc, Kd/tan(45−ϕ/2))', n(X.L1), 'm')}
@@ -347,7 +351,8 @@
     ${eq('牆背地表超載 qs', n(p.qs), 'tf/m/m')}
     ${eq('超載性質（配筋載重組合）', p.qsType === 'D' ? '永久載重（歸 D、H）' : '活載重 L', '')}
     ${eq(`牆背地下水位 Hw1 = ${n(p.hw1r, 3)} × H`, n(o.hw1), 'm')}
-    ${eq('牆前地下水位 Hw2（自基礎底面）', n(p.hw2), 'm')}
+    ${eq('牆前地下水位 Hw2（自基礎底面；負值表示位於基底以下）', o.hw2 === null ? '無地下水' : n(o.hw2), o.hw2 === null ? '' : 'm')}
+    ${eq('承載層平均單位重 γ1（基底下 B 範圍）' + (o.hw2 === null || o.g.dw >= o.g.B ? '' : o.g.dw > 0 ? ' = γ′ + (dw/B)·γw' : ' = γ − γw'), n(o.g.g1), 'tf/m³')}
     <h3>1.3 載重組合（${o.cf.name}）</h3>
     <div class="scroll"><table class="t"><thead><tr><th></th><th>穩定分析</th><th>配筋設計</th></tr></thead><tbody>
       <tr><td>常時</td><td>D+L+H+F</td><td>${o.cf.combN}</td></tr>
@@ -440,7 +445,7 @@
 
   function run() {
     try { o = RW.compute(P); } catch (e) { console.error(e); return; }
-    for (const [k, v] of [['h', o.g.h], ['B', o.g.B], ['eta', o.g.eta], ['Y', o.g.Y], ['hw1', o.hw1], ['khS', o.khS], ['kvS', o.kvS], ['dN', o.n.delta], ['dE', o.e.delta]]) {
+    for (const [k, v] of [['h', o.g.h], ['B', o.g.B], ['eta', o.g.eta], ['Y', o.g.Y], ['hw1', o.hw1], ['khS', o.khS], ['g1', o.g.g1], ['kvS', o.kvS], ['dN', o.n.delta], ['dE', o.e.delta]]) {
       const el = document.getElementById('in_c_' + k); if (el) el.textContent = n(v, ['eta', 'khS', 'kvS'].includes(k) ? 3 : 2);
     }
     const cb = document.getElementById('combo');
