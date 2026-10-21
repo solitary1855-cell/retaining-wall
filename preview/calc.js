@@ -218,7 +218,7 @@
     for (const [X, sfx, elim] of [[N, 'n', 6], [Q, 'e', 3]]) stability(X, p, g, sfx, elim);
 
     // ---------- 配筋 ----------
-    const bar = k => { const b = p.bars[k]; const Ab = BARS[b.D] || 0; return { Ab, As: Ab * 100 / b.s }; };
+    const bar = k => { const b = p.bars[k]; const Ab = BARS[b.D] || 0; return { Ab, As: b.s > 0 ? Ab * 100 / b.s : 0 }; };
     o.bar = {}; for (const k of Object.keys(p.bars)) o.bar[k] = bar(k);
     const KAH = N.Ka * cos(N.incl), KAEH = Q.Kae * (1 - p.kv) * cos(Q.delta + N.theta);
     o.KAH = KAH; o.KAEH = KAEH; o.m = p.fy / (0.85 * p.fc);
