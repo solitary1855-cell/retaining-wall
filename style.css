@@ -254,3 +254,6 @@ details.grp > summary::-webkit-details-marker { display: none; }
 .figs .draw .wt { font-size: 23px; }
 .figs .draw .bl { font-size: 25px; }
 .figs .draw .bl.small { font-size: 22px; }
+
+.report table.t td.fxc { white-space: nowrap; padding: 6px 10px; }
+.report table.t td.fxc math { font-size: 1.05em; }

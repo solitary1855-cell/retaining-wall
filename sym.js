@@ -23,7 +23,7 @@
     ['Vu', 'V', 'u'], ['Mu', 'M', 'u'], ['Vn', 'V', 'n'], ['Mn', 'M', 'n'], ['Ve', 'V', 'e'], ['Me', 'M', 'e'],
     ['Vc', 'V', 'c'], ['Rn', 'R', 'n'], ['Mr', 'M', 'r'], ['Md', 'M', 'd'], ['Hu', 'H', 'u'], ['Hd', 'H', 'd'],
     ['V1', 'V', '1'], ['V2', 'V', '2'], ["As'", 'A', 's', '′'], ['As', 'A', 's'], ['Ab', 'A', 'b'],
-    ['KAE', 'K', 'AE'], ['KPE', 'K', 'PE'], ['PAEh', 'P', 'AEh'], ['PAEv', 'P', 'AEv'], ['PAE', 'P', 'AE'],
+    ['KAE', 'K', 'AE'], ['KPE', 'K', 'PE'], ['KA', 'K', 'A'], ['KP', 'K', 'P'], ['PAEh', 'P', 'AEh'], ['PAEv', 'P', 'AEv'], ['PAE', 'P', 'AE'],
     ['PQEh', 'P', 'QEh'], ['PQEv', 'P', 'QEv'], ['PWE', 'P', 'WE'], ['PA', 'P', 'A'], ['yA', 'y', 'A'], ['xA', 'x', 'A'],
     ['PGAh', 'PGA', 'h'], ['PGAv', 'PGA', 'v'], ['kh', 'k', 'h'], ['kv', 'k', 'v'],
     ['Ws', 'W', 's'], ['tav', 't', 'av'], ['hav', 'h', 'av'], ['ta', 't', 'a'], ['db', 'd', 'b']

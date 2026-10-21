@@ -181,12 +181,21 @@
   const eq = (lab, v, u = '', key = false) => `<div class="eq${key ? ' key' : ''}"><span>${lab}</span><span class="v">${v}</span><span class="u">${u}</span></div>`;
 
   // ---------- 直式公式（MathML） ----------
-  const mT = str => str.replace(/(sin|cos)(²)?|([A-Za-zα-ωϕ])|(\d+)|(.)/g, (m, fn, sq, v, d, op) =>
+  const mT = str => str.replace(/(sin|cos|tan)(²)?|([A-Za-zα-ωϕ])|(\d+)|(.)/g, (m, fn, sq, v, d, op) =>
     fn ? (sq ? `<msup><mi>${fn}</mi><mn>2</mn></msup>` : `<mi>${fn}</mi>`) + '<mspace width="0.08em"/>' :
       v ? `<mi>${v}</mi>` : d ? `<mn>${d}</mn>` : '()'.includes(op) ? `<mo stretchy="false" lspace="0" rspace="0">${op}</mo>` : `<mo>${op}</mo>`);
   const mFrac = (a, b) => `<mfrac><mrow>${a}</mrow><mrow>${b}</mrow></mfrac>`;
   const mBox = (sign, num, den) => `<msup><mrow><mo>[</mo><mn>1</mn><mo>${sign}</mo><msqrt><mfrac displaystyle="true"><mrow>${mT(num)}</mrow><mrow>${mT(den)}</mrow></mfrac></msqrt><mo>]</mo></mrow><mn>2</mn></msup>`;
   const fx = (lhs, body, tag) => `<div class="fx"><math display="block"><mrow><msub><mi>K</mi><mi>${lhs}</mi></msub><mo>=</mo>${body}</mrow></math><span class="u">${tag}</span></div>`;
+  // 表格內行內直式公式
+  const mK = (sub, body) => `<math displaystyle="true"><mrow><msub><mi>K</mi><mi mathvariant="normal">${sub}</mi></msub><mo>=</mo>${body}</mrow></math>`;
+  const mTan2 = sign => `<msup><mi>tan</mi><mn>2</mn></msup><mo>(</mo><mn>45</mn><mo>°</mo><mo>${sign}</mo><mfrac><mi>ϕ</mi><mn>2</mn></mfrac><mo>)</mo>`;
+  const B_KA = mFrac(mT('cos²(ϕ−θ)'), mT('cos²θ·cos(δ+θ)') + mBox('+', 'sin(ϕ+δ)·sin(ϕ−α)', 'cos(δ+θ)·cos(θ−α)'));
+  const B_KAE = mFrac(mT('cos²(ϕ−θ−φ)'), mT('cosφ·cos²θ·cos(δ+φ+θ)') + mBox('+', 'sin(ϕ+δ)·sin(ϕ−φ−α)', 'cos(δ+φ+θ)·cos(θ−α)'));
+  const B_KP = mFrac(mT('cos²(ϕ+θ)'), mT('cos²θ·cos(δ−θ)') + mBox('−', 'sin(ϕ+δ)·sin(ϕ+α)', 'cos(δ−θ)·cos(α−θ)'));
+  const B_KPE = mFrac(mT('cos²(ϕ+θ−φ)'), mT('cosφ·cos²θ·cos(δ−θ+φ)') + mBox('−', 'sin(ϕ+δ)·sin(ϕ−φ+α)', 'cos(δ−θ+φ)·cos(α−θ)'));
+  const SQ = `<msqrt>${mT('cos²α−cos²ϕ')}</msqrt>`;
+  const B_KAR = mT('cosα·') + mFrac(mT('cosα−') + SQ, mT('cosα+') + SQ);
   const FX_KAE = fx('AE', mFrac(mT('cos²(ϕ−θ−φ)'), mT('cosφ·cos²θ·cos(δ+φ+θ)') + mBox('+', 'sin(ϕ+δ)·sin(ϕ−φ−α)', 'cos(δ+φ+θ)·cos(θ−α)')), '式(7.3-12)');
   const FX_KPE = fx('PE', mFrac(mT('cos²(ϕ+θ−φ)'), mT('cosφ·cos²θ·cos(δ−θ+φ)') + mBox('−', 'sin(ϕ+δ)·sin(ϕ−φ+α)', 'cos(δ−θ+φ)·cos(α−θ)')), '式(7.3-14)');
 
@@ -289,6 +298,33 @@
     const rows = [['S1', '牆身主筋'], ['S2', '牆身補強'], ['S3', '牆身補強'], ['S4', '踵版上層 S4、S6'], ['S5', '趾版下層 S5、S7'], ['S8', '暴露面垂直筋'], ['T1', '牆身水平筋'], ['T2', '基礎溫度筋']];
     return `<div class="scroll"><table class="t"><thead><tr><th>編號</th><th>說明</th><th>長度 (m)</th><th>號數</th><th>間距 (cm)</th><th>As (cm²/m)</th></tr></thead><tbody>${rows.map(([k, d]) => `<tr><td>${k}</td><td style="text-align:left">${d}</td><td>${P.bars[k].L !== undefined ? n(P.bars[k].L) : '–'}</td><td>D${P.bars[k].D}</td><td>${P.bars[k].s}</td><td>${n(o.bar[k].As)}</td></tr>`).join('')}</tbody></table></div>`;
   }
+  // 1.8 土壓力係數彙整：KA、KAE、KP、KPE 之計算方法／公式／參數／數值
+  function kTable() {
+    const p = P, N = o.n, Q = o.e, d1 = v => n(v, 1) + '°';
+    const pa = `ϕ = ${d1(N.phi)}、δ = ${d1(N.delta)}、θ = ${d1(N.theta)}、α = ${d1(N.alpha)}`;
+    const ka = N.kaOvr ? ['指定值', '—', '—']
+      : p.kam === 'rankine'
+        ? (N.alpha === 0 ? ['Rankine，式(7.3-6)', mK('A', mTan2('−')), `ϕ = ${d1(N.phi)}`]
+          : ['Rankine（地表傾斜）', mK('A', B_KAR), `ϕ = ${d1(N.phi)}、α = ${d1(N.alpha)}`])
+        : ['Coulomb，式(7.3-5)', mK('A', B_KA), pa];
+    const kae = Q.kaeOvr ? [`指定值（式(7.3-12) 計算值 = ${n(Q.KaeCalc, 3)}）`, '—', '—']
+      : ['Mononobe-Okabe，式(7.3-12)', mK('AE', B_KAE),
+        `ϕ = ${d1(N.phi)}、δ = ${d1(Q.delta)}（地震時）、θ = ${d1(N.theta)}、α = ${d1(N.alpha)}、φ = tan⁻¹[kh/(1−0)] = ${n(Q.vphi)}°（kv 取 0）`];
+    const pf = `ϕ = ${d1(p.phiF)}（承載層）`;
+    const kp = N.kpOvr ? ['指定值', '—', '—']
+      : p.kpm === 'coulomb' ? ['Coulomb', mK('P', B_KP), `${pf}、δp = ${d1(p.deltaP)}、θ = α = 0°`]
+      : p.kpm === 'ck' ? ['Caquot-Kerisel，第7.3.3節、圖-解7.3-1', mK('P', `<mi>R</mi><mo>·</mo><msub><mi>K</mi><mi mathvariant="normal">P</mi></msub><mo stretchy="false">(</mo><mi>δ</mi><mo>/</mo><mi>ϕ</mi><mo>=</mo><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo>`) + '<br>' + `<math displaystyle="true"><mrow><msub><mi>K</mi><mi mathvariant="normal">P</mi></msub><mo stretchy="false">(</mo><mi>δ</mi><mo>/</mo><mi>ϕ</mi><mo>=</mo><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo><mo>=</mo>${mFrac(mTan2('+'), '<mi>R</mi><mo stretchy="false">(</mo><mi>δ</mi><mo>=</mo><mn>0</mn><mo stretchy="false">)</mo>')}</mrow></math>`,
+          `${pf}、δp = ${d1(p.deltaP)}、δ/ϕ = ${n(N.ck.rat, 3)}、R = ${n(N.ck.R, 3)}、KP(δ/ϕ=−1) = ${n(N.ck.Kp1, 3)}`]
+      : ['Rankine', mK('P', mTan2('+')), pf];
+    const kpe = Q.kpeOvr ? ['指定值', '—', '—']
+      : ['Mononobe-Okabe，式(7.3-14)', mK('PE', B_KPE),
+        `${pf}、δ = ${d1(Q.deltaP)}、θ = α = 0°（止滑榫前緣垂直、地表水平）、φ = ${n(Q.vphi)}°`];
+    const row = (k, nm, r, v) => `<tr><td style="white-space:nowrap">${k}</td><td style="text-align:left;min-width:7em">${nm}</td><td style="text-align:left;min-width:9em">${r[0]}</td><td class="fxc" style="text-align:left">${r[1]}</td><td style="text-align:left">${r[2]}</td><td><b>${n(v, 3)}</b></td></tr>`;
+    return `<div class="scroll"><table class="t"><thead><tr><th style="white-space:nowrap">係數</th><th>說明</th><th>計算方法</th><th>公式</th><th>採用參數</th><th>數值</th></tr></thead><tbody>
+      ${row('KA', '常時主動（牆背土壤）', ka, N.Ka)}${row('KAE', '地震時主動（牆背土壤）', kae, Q.Kae)}
+      ${row('KP', '常時被動（止滑榫前）', kp, N.Kp)}${row('KPE', '地震時被動（止滑榫前）', kpe, Q.Kp)}</tbody></table></div>
+      <p class="note">依據：建築物基礎構造設計規範(112) 第7.3.2～7.3.5節。ϕ 為土壤內摩擦角，δ 為牆面摩擦角，θ 為牆背面與垂直面交角，α 為地表面與水平面交角，φ 為地震合成角。</p>`;
+  }
   function report() {
     const p = P, N = o.n, Q = o.e, g = o.g;
     const kpLab = (N.kpOvr ? 'Kp' : p.kpm === 'coulomb' ? `Kp（Coulomb，δp = ${n(p.deltaP, 1)}°）` : p.kpm === 'ck'
@@ -332,7 +368,7 @@
       <tr><td>抗傾覆</td><td>${n(p.fso_n, 1)}</td><td>${n(p.fso_e, 1)}</td></tr>
       <tr><td>抗承載</td><td>${n(p.fsb_n, 1)}</td><td>${n(p.fsb_e, 1)}</td></tr></tbody></table></div>
     <h3>1.7 保護層</h3>${eq("保護層厚度 d'", n(p.cover, 1), 'cm')}
-    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${eq('主動土壓係數計算方法', kaMeth + (N.kaOvr ? '（Ka = ' + n(N.Ka, 3) + '）' : ''), '')}${Q.kaeOvr ? eq('地震時主動土壓係數 KAE', '指定值 ' + n(Q.Kae, 3), '') : ''}${eq('被動土壓係數計算方法', p.kpm === 'coulomb' ? 'Coulomb（δp = ' + n(p.deltaP, 1) + '°）' : p.kpm === 'ck' ? 'Caquot-Kerisel（δp = ' + n(p.deltaP, 1) + '°）' : 'Rankine', '')}${p.kpm === 'ck' && !N.ck.inRange ? '<p class="note">※ 承載層 ϕ 超出圖-解7.3-1 表列範圍（10°～45°），以邊界值計算。</p>' : ''}${p.kpm !== 'rankine' && p.deltaP > 2 * p.phiF / 3 ? '<p class="note">※ δp 大於 2ϕ/3，第7.3.3節解說3規定設計採用之牆面摩擦角不宜大於 2ϕ/3。</p>' : ''}
+    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${kTable()}${p.kpm === 'ck' && !N.ck.inRange ? '<p class="note">※ 承載層 ϕ 超出圖-解7.3-1 表列範圍（10°～45°），以邊界值計算。</p>' : ''}${p.kpm !== 'rankine' && p.deltaP > 2 * p.phiF / 3 ? '<p class="note">※ δp 大於 2ϕ/3，第7.3.3節解說3規定設計採用之牆面摩擦角不宜大於 2ϕ/3。</p>' : ''}
 
     <h2>2. 擋土牆設計尺寸及分析結果</h2>
     <h3>2.1 擋土牆設計尺寸</h3>
