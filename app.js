@@ -312,7 +312,7 @@
         `ϕ = ${d1(N.phi)}、δ = ${d1(Q.delta)}（地震時）、θ = ${d1(N.theta)}、α = ${d1(N.alpha)}、φ = tan⁻¹[kh/(1−0)] = ${n(Q.vphi)}°（kv 取 0）`];
     const pf = `ϕ = ${d1(p.phiF)}（承載層）`;
     const kp = N.kpOvr ? ['指定值', '—', '—']
-      : p.kpm === 'coulomb' ? ['Coulomb', mK('P', B_KP), `${pf}、δp = ${d1(p.deltaP)}、θ = α = 0°`]
+      : p.kpm === 'coulomb' ? ['Coulomb（公路橋梁設計規範 第3.20節；建築物基礎構造設計規範(112) 第7.3.3節解說1、圖-解7.3-3；即式(7.3-14) 令 φ = 0）', mK('P', B_KP), `${pf}、δp = ${d1(p.deltaP)}、θ = α = 0°`]
       : p.kpm === 'ck' ? ['Caquot-Kerisel，第7.3.3節、圖-解7.3-1', mK('P', `<mi>R</mi><mo>·</mo><msub><mi>K</mi><mi mathvariant="normal">P</mi></msub><mo stretchy="false">(</mo><mi>δ</mi><mo>/</mo><mi>ϕ</mi><mo>=</mo><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo>`) + '<br>' + `<math displaystyle="true"><mrow><msub><mi>K</mi><mi mathvariant="normal">P</mi></msub><mo stretchy="false">(</mo><mi>δ</mi><mo>/</mo><mi>ϕ</mi><mo>=</mo><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo><mo>=</mo>${mFrac(mTan2('+'), '<mi>R</mi><mo stretchy="false">(</mo><mi>δ</mi><mo>=</mo><mn>0</mn><mo stretchy="false">)</mo>')}</mrow></math>`,
           `${pf}、δp = ${d1(p.deltaP)}、δ/ϕ = ${n(N.ck.rat, 3)}、R = ${n(N.ck.R, 3)}、KP(δ/ϕ=−1) = ${n(N.ck.Kp1, 3)}`]
       : ['Rankine', mK('P', mTan2('+')), pf];
