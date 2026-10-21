@@ -167,7 +167,9 @@
     const mv = o.mv = MVM[p.mvm] || MVM.rotBase;
     // 第7.3.4節解說3：kh 取地表水平向尖峰加速度之半（側向位移完全受限取1.5倍）；kv 取垂直向之半
     o.khS = (p.khRes ? 1.5 : 0.5) * p.pgaH; o.kvS = 0.5 * p.pgaV;
-    Q.vphi = D(Math.atan(p.kh / (1 - p.kv)));
+    // 地震合成角 φ：依第7.3.4節解說3，遠距離地震可忽略垂直地震力，令 kv = 0（不引用輸入之 kv）
+    Q.kvPhi = 0;
+    Q.vphi = D(Math.atan(p.kh / (1 - Q.kvPhi)));
     Q.crit = N.phi - Q.vphi - N.alpha; Q.okCrit = Q.crit >= 0;
     Q.delta = p.deltaRE * p.phiB;   // 地震時牆背摩擦角（獨立輸入）
     Q.KaeCalc = moKae(N.phi, Q.delta, N.theta, N.alpha, Q.vphi);
