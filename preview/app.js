@@ -42,6 +42,20 @@
     set('S3', P.bars.S3.D, 0, 0);  // R-008 牆背僅 ⑥、⑦ 兩種，S3 不使用（間距 0）
     set('S4', rb.S4[0], rb.S4[1]); set('S5', rb.S5[0], rb.S5[1]); set('S8', rb.S8[0], rb.S8[1]);
     set('T1', 13, 30); set('T2', 13, 30);
+    // 主筋：R-008 表二配筋若不足目前所選規範之需求，逐級加大號數（S1、S2 同步）
+    try {
+      const SIZES = [13, 16, 19, 22, 25, 29, 32, 36];
+      const up = k => { const i = SIZES.indexOf(P.bars[k].D); if (i >= 0 && i < SIZES.length - 1) { P.bars[k].D = SIZES[i + 1]; return true; } if (P.bars[k].s > 10) { P.bars[k].s = +(P.bars[k].s - 2.5).toFixed(1); return true; } return false; };
+      for (let it = 0; it < 12; it++) {
+        const o1 = RW.compute(P); let changed = false;
+        for (const r of o1.rc) if (!(r.okM && r.okV)) {
+          if (/^S1/.test(r.desc)) { changed = up('S1') | up('S2') || changed; }
+          else if (r.desc === 'S4') changed = up('S4') || changed;
+          else if (r.desc === 'S5') changed = up('S5') || changed;
+        }
+        if (!changed) break;
+      }
+    } catch (e) {}
     // 溫度筋／暴露面筋：R-008 為 D13@30，若不足目前規範最少鋼筋量則自動加大
     try {
       const o2 = RW.compute(P);
@@ -99,7 +113,7 @@
       ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb'], ['ck', 'Caquot-Kerisel']]],
       ['deltaP', '被動牆面摩擦角 δp', '度'], ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt']],
       hint: 'Ka — Coulomb：式(7.3-5)，背填土 ϕ、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp 不宜大於 2ϕ/3。地震時 KPE 依式(7.3-14)，亦可指定。' },
-    { t: '9. 擋土牆配筋設計', bars: true, hint: '選擇建議尺寸時一併帶入 R-008 表二之建議配筋（取牆身高 J 不小於本牆之欄位）：⑥→S1、⑦→S2、①→S4、②→S5、⑧→S8、⑨→T1、④→T2；J = 9.0 m 之 ① 2-D25@15 以 D25@7.5 計。R-008 鋼筋 fy：≤D22 用 2800、≥D25 用 4200 kgf/cm²。S3 間距填 0 表示不使用；S8、T1、T2 若不足目前規範最少鋼筋量則自動加大。' }
+    { t: '9. 擋土牆配筋設計', bars: true, hint: '選擇建議尺寸時一併帶入 R-008 表二之建議配筋（取牆身高 J 不小於本牆之欄位）：⑥→S1、⑦→S2、①→S4、②→S5、⑧→S8、⑨→T1、④→T2；J = 9.0 m 之 ① 2-D25@15 以 D25@7.5 計。R-008 鋼筋 fy：≤D22 用 2800、≥D25 用 4200 kgf/cm²。S3 間距填 0 表示不使用；主筋若不足目前所選規範之需求則逐級加大號數，S8、T1、T2 若不足最少鋼筋量亦自動加大。' }
 
   ];
 
