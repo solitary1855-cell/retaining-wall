@@ -248,3 +248,9 @@ details.grp > summary::-webkit-details-marker { display: none; }
 .sym sub { vertical-align: -0.28em; }
 .sym sup { vertical-align: 0.45em; margin-right: -0.05em; }
 .grp.plain > .fields { padding-top: 12px; }
+/* 上方兩張動態圖：標示字體放大 1 倍 */
+.figs .draw { font-size: 24px; }
+.figs .draw .rt, .figs .draw .lt, .figs .draw .cap, .figs .draw .dim text { font-size: 24px; }
+.figs .draw .wt { font-size: 23px; }
+.figs .draw .bl { font-size: 25px; }
+.figs .draw .bl.small { font-size: 22px; }

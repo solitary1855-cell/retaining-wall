@@ -92,8 +92,8 @@
       ['hw1r', '牆背水位比 Hw1/H', ''], ['=hw1', '牆背水位 Hw1', 'm'],
       ['hw2', '牆前水位 Hw2（自基底）', 'm'], ['wt', '基底位於地下水位下', '', 'bool']] },
     { t: '4. 載重組合（含配筋規範與強度折減因子）', info: 'combo', f: [
-      ['code', '配筋規範', '', 'select', [['hw', '公路橋梁設計規範'], ['c112', '112年混凝土規範']]]],
-      hint: '係數依所選規範自動帶入（公路橋梁設計規範 第3.23節表3.3；112年混凝土規範 表5.3.1及第5.3.6、5.3.7節），組合內容見下表。' },
+      ['code', '配筋規範', '', 'select', [['hw', '公路橋梁設計規範'], ['c112', '112年建築物基礎構造設計規範']]]],
+      hint: '係數依所選規範自動帶入。公路橋梁設計規範：第3.23節表3.3。112年建築物基礎構造設計規範：第2.11節規定基礎構材以極限強度法設計時依「建築構造編」辦理，載重組合依112年建築物混凝土結構設計規範表5.3.1及第5.3.6、5.3.7節。組合內容見下表。' },
     { t: '5. 材料設計強度及保護層', f: [['fc', "混凝土 fc'", 'kgf/cm²'], ['fy', '鋼筋 fy', 'kgf/cm²'], ['cover', "保護層 d'", 'cm']] },
     { t: '6. 地震係數', f: [
       ['pgaH', '地表水平向尖峰加速度 PGAh', 'g'], ['pgaV', '地表垂直向尖峰加速度 PGAv', 'g'],
@@ -168,6 +168,7 @@
       else if (el.tagName === 'SELECT') P[k] = el.value;
       if (k === 'preset') { applyPreset(el.value); save(); buildForm(); fmtSymbols(form); run(); return; }
       if (DIMK.includes(k) && P.preset) { P.preset = ''; const ps = document.getElementById('in_preset'); if (ps) ps.value = ''; }
+      if (t === 'text' || t === 'bool' || el.tagName === 'SELECT') { /* 已處理 */ }
       else if (t === 'opt') P[k] = el.value.trim() === '' ? null : parseFloat(el.value);
       else { const v = parseFloat(el.value); if (!isFinite(v)) return; P[k] = v; }
     }

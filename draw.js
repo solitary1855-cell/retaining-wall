@@ -3,12 +3,12 @@
   const f2 = v => (+v).toFixed(2);
   const TA = d => Math.tan(d * Math.PI / 180);
 
-  function frame(xmin, xmax, ymin, ymax, W) {
+  function frame(xmin, xmax, ymin, ymax, W, fs = 1) {
     const pad = 34;
     const s = (W - 2 * pad) / (xmax - xmin);
     const H = (ymax - ymin) * s + 2 * pad;
     return {
-      s, W, H,
+      s, W, H, fs,
       X: x => +(pad + (x - xmin) * s).toFixed(1),
       Y: y => +(pad + (ymax - y) * s).toFixed(1),
       P: a => a.map(([x, y]) => `${(pad + (x - xmin) * s).toFixed(1)},${(pad + (ymax - y) * s).toFixed(1)}`).join(' ')
@@ -40,15 +40,23 @@
   function dimH(F, x1, x2, y, label, cls = '') {
     const a = F.X(x1), b = F.X(x2), yy = F.Y(y);
     if (Math.abs(b - a) < 1) return '';
+    label = fitLab(F, label, Math.abs(b - a));
     return `<g class="dim ${cls}"><line x1="${a}" y1="${yy}" x2="${b}" y2="${yy}" marker-start="url(#tk)" marker-end="url(#tk)"/>
-      <text x="${(a + b) / 2}" y="${yy - 5}" text-anchor="middle">${label}</text></g>`;
+      <text x="${(a + b) / 2}" y="${yy - 5 * (F.fs || 1)}" text-anchor="middle">${label}</text></g>`;
   }
   function dimV(F, x, y1, y2, label, side = 1) {
     const xx = F.X(x), a = F.Y(y1), b = F.Y(y2);
     if (Math.abs(b - a) < 1) return '';
-    const tx = side > 0 ? xx + 14 : xx - 4, my = (a + b) / 2;
+    label = fitLab(F, label, Math.abs(b - a));
+    const fs = F.fs || 1, tx = side > 0 ? xx + 2 + 12 * fs : xx - 4 * fs, my = (a + b) / 2;
     return `<g class="dim"><line x1="${xx}" y1="${a}" x2="${xx}" y2="${b}" marker-start="url(#tk)" marker-end="url(#tk)"/>
       <text x="${tx}" y="${my}" text-anchor="middle" transform="rotate(-90 ${tx} ${my})">${label}</text></g>`;
+  }
+  // 標註長度超過尺寸線時，只保留代號（去掉 =數值）
+  function fitLab(F, label, len) {
+    const fs = F.fs || 1, w = t => [...t].length * 7.4 * fs;
+    if (!label || F.fs === undefined || fs === 1) return label;
+    return w(label) > len - 4 && label.includes('=') ? label.split('=')[0] : label;
   }
   function ext(F, x1, y1, x2, y2) { return `<line class="ext" x1="${F.X(x1)}" y1="${F.Y(y1)}" x2="${F.X(x2)}" y2="${F.Y(y2)}"/>`; }
   function grass(F, x1, x2, y) {
@@ -72,9 +80,17 @@
     const ps = pw / Math.max(sMax + wMax, 1e-6);
     const rd = 0.32 * p.H;                           // 地反力圖深
     const rs = rd / Math.max(X.qt, X.qh, 1e-6);
-    const xmin = Math.min(-0.2 * p.H - 0.5, p.Kc - 1.25), xmax = B + pw + 0.7;
-    const ymin = -Math.max(p.Kd, 0) - rd - 0.3, ymax = p.H + Math.max(0.45, (B - p.C - p.T) * ta + 0.4) + 0.12;
-    const F = frame(xmin, xmax, ymin, ymax, 760);
+    const FS = 2, Wd = 760;                          // 標示字體倍率（上方動態圖放大 1 倍）
+    let xmin = Math.min(-0.2 * p.H - 0.5, p.Kc - 1.25), xmax = B + pw + 0.7;
+    const xmin0 = xmin, xmax0 = xmax;
+    for (let it = 0; it < 4; it++) {                 // 依字寬預留左右邊界（Pp、qh、Pw 標示）
+      const s0 = (Wd - 68) / (xmax - xmin);
+      xmin = Math.min(xmin0, p.Kd > 0 ? p.Kc - 0.35 - 210 / s0 : xmin0);
+      xmax = Math.max(xmax0, B + 230 / s0, B + pw + 150 / s0);
+    }
+    const s1 = (Wd - 68) / (xmax - xmin);
+    const ymin = -Math.max(p.Kd, 0) - rd - 0.3 - 20 / s1, ymax = p.H + Math.max(0.45, (B - p.C - p.T) * ta + 0.4) + 0.12 + 40 / s1;
+    const F = frame(xmin, xmax, ymin, ymax, Wd, FS);
     const x0 = B;
     let s = `<svg viewBox="0 0 ${F.W} ${F.H.toFixed(0)}" class="draw" role="img" aria-label="擋土牆載重示意圖">${defs}`;
     // soils
@@ -86,7 +102,7 @@
     // water
     if (hw1 > 0) s += `<rect x="${F.X(p.C + p.S)}" y="${F.Y(hw1)}" width="${F.X(x0) - F.X(p.C + p.S)}" height="${F.Y(Math.max(p.D2, 0)) - F.Y(hw1)}" fill="var(--water)" opacity=".10"/>
       <line class="wl" x1="${F.X(p.C + p.S)}" y1="${F.Y(hw1)}" x2="${F.X(x0)}" y2="${F.Y(hw1)}"/>
-      <text class="wt" x="${F.X(p.C + p.S) + 6}" y="${F.Y(hw1) - 5}">▽ Hw1 = ${f2(hw1)}</text>`;
+      <text class="wt" x="${F.X(p.C + p.S) + 6}" y="${F.Y(hw1) - 8}">▽ Hw1 = ${f2(hw1)}</text>`;
     // wall
     s += `<polygon points="${F.P(wallPoly(p, B))}" fill="url(#pConc)" class="conc"/>`;
     const kp = keyPoly(p); if (kp) s += `<polygon points="${F.P(kp)}" fill="url(#pConc)" class="conc"/>`;
@@ -111,9 +127,9 @@
     const yh = mode === 'e' ? (o.e.Paeh * o.e.yae + o.e.Pqeh * o.e.yqe) / Ph : (N.Pah * N.ya + N.Pqh * N.yq) / Ph;
     const Pw = mode === 'e' ? o.e.Pwe : N.Pw;
     s += `<line class="res" x1="${F.X(x0 + pw + 0.35)}" y1="${F.Y(yh)}" x2="${F.X(x0) + 3}" y2="${F.Y(yh)}" marker-end="url(#ar)"/>
-      <text class="rt" x="${F.X(x0 + pw + 0.35)}" y="${F.Y(yh) - 6}" text-anchor="end">${mode === 'e' ? 'Paeh+Pqeh' : 'Pah+Pqh'} = ${f2(Ph)} tf</text>`;
+      <text class="rt" x="${F.X(x0 + pw + 0.35)}" y="${F.Y(yh) - 16}" text-anchor="end">${mode === 'e' ? 'Paeh+Pqeh' : 'Pah+Pqh'} = ${f2(Ph)} tf</text>`;
     if (Pw > 0) s += `<text class="wt" x="${F.X(x0 + sig(p.H) * ps + wMax * ps) + 4}" y="${F.Y(0) - 4}">Pw = ${f2(Pw)}</text>`;
-    s += `<text class="lt" x="${F.X(x0 + sig(p.H) * ps / 2)}" y="${F.Y(p.H * 0.62)}" text-anchor="middle">${mode === 'e' ? 'Kae' : 'Ka'} = ${(mode === 'e' ? o.e.Kae : N.Ka).toFixed(3)}</text>`;
+    s += `<text class="lt" x="${F.X(x0 + sig(p.H * 0.2) * ps) + 10}" y="${F.Y(p.H) + 40}">${mode === 'e' ? 'Kae' : 'Ka'} = ${(mode === 'e' ? o.e.Kae : N.Ka).toFixed(3)}</text>`;
     // base reaction
     const base = -0.02 - Math.max(0, 0) ;
     const rp = [];
@@ -126,16 +142,16 @@
     const yb = -Math.max(p.Kd, 0) - 0.12;
     s += `<polygon points="${F.P([[0, yb], ...rp, [B, yb]])}" class="pr"/>`;
     for (let i = 1; i < 6; i++) { const r = rp[Math.round(i * n / 6)]; s += `<line class="ra" x1="${F.X(r[0])}" y1="${F.Y(r[1])}" x2="${F.X(r[0])}" y2="${F.Y(yb) + 1}" marker-end="url(#ar)"/>`; }
-    s += `<text class="rt" x="${F.X(0)}" y="${F.Y(rp[0][1]) + 15}">qt = ${f2(X.qt)}</text>
-      <text class="rt" x="${F.X(B) + 6}" y="${Math.max(F.Y(rp[n][1]), F.Y(yb) + 12) + 4}">qh = ${f2(X.qh)} tf/m²</text>`;
+    s += `<text class="rt" x="${F.X(0)}" y="${F.Y(rp[0][1]) + 28}">qt = ${f2(X.qt)}</text>
+      <text class="rt" x="${F.X(B) + 6}" y="${Math.max(F.Y(rp[n][1]), F.Y(yb) + 22) + 8}">qh = ${f2(X.qh)} tf/m²</text>`;
     // passive
     if (p.Kd > 0) {
       const xk = p.Kc, kw = 0.35;
       s += `<polygon points="${F.P([[xk, 0], [xk, -p.Kd], [xk - kw, -p.Kd], [xk - kw * 0.55, 0]])}" class="pp"/>
-        <line class="res pp-a" x1="${F.X(xk - kw - 0.35)}" y1="${F.Y(-p.Kd / 2)}" x2="${F.X(xk) - 2}" y2="${F.Y(-p.Kd / 2)}" marker-end="url(#ar)"/>
-        <text class="rt" x="${F.X(xk - kw - 0.38)}" y="${F.Y(-p.Kd / 2) + 4}" text-anchor="end">Pp = ${f2(X.Pp)}</text>`;
+        <line class="res pp-a" x1="${F.X(xk - kw) - 50}" y1="${F.Y(-p.Kd / 2)}" x2="${F.X(xk) - 2}" y2="${F.Y(-p.Kd / 2)}" marker-end="url(#ar)"/>
+        <text class="rt" x="${F.X(xk - kw) - 56}" y="${F.Y(-p.Kd / 2) + 8}" text-anchor="end">Pp = ${f2(X.Pp)}</text>`;
     }
-    s += `<text class="cap" x="${F.W - 8}" y="18" text-anchor="end">${mode === 'e' ? '地震時' : '常時'}　ΣV = ${f2(X.SV)} tf　ΣH = ${f2(X.SH)} tf　e = ${f2(X.e)} m</text>`;
+    s += `<text class="cap" x="${F.W - 8}" y="26" text-anchor="end">${mode === 'e' ? '地震時' : '常時'}　ΣV = ${f2(X.SV)} tf　ΣH = ${f2(X.SH)} tf　e = ${f2(X.e)} m</text>`;
     return s + '</svg>';
   }
 
@@ -144,9 +160,12 @@
     const p = o.p, g = o.g, B = g.B, ta = TA(o.n.alpha);
     const ks = p.Ks || 0.3;
     const L = Math.max(B, 1.2);
+    const FS = 2;                                   // 標示字體倍率（上方動態圖放大 1 倍）
     const xmin = -0.42 * L - 0.3, xmax = B + 0.42 * L + 0.15;
-    const ymin = -p.Kd - 0.75, ymax = p.H + Math.max(0.45, 0.35 * L * ta + 0.3) + 0.15;
-    const F = frame(xmin, xmax, ymin, ymax, 760);
+    const s0 = (760 - 68) / (xmax - xmin), u = 13 * FS / s0;   // u：一行字高（m）
+    const yk = -p.Kd - 0.04 - u, y1 = (p.Kd > 0 ? yk : -0.02) - 1.15 * u, y2 = y1 - 1.15 * u;
+    const ymin = Math.min(-p.Kd - 0.75, y2 - 0.3), ymax = p.H + Math.max(0.45, 0.35 * L * ta + 0.3) + 0.15 + u;
+    const F = frame(xmin, xmax, ymin, ymax, 760, FS);
     const c = Math.min(0.075, p.T / 4, p.D2 / 4);
     const yb = p.D2 + p.D1;
     let s = `<svg viewBox="0 0 ${F.W} ${F.H.toFixed(0)}" class="draw" role="img" aria-label="擋土牆設計尺寸示意圖">${defs}`;
@@ -155,7 +174,7 @@
     const xr = xmax - 0.1;
     s += `<line class="gl" x1="${F.X(p.C + p.T)}" y1="${F.Y(p.H)}" x2="${F.X(xr)}" y2="${F.Y(p.H + (xr - p.C - p.T) * ta)}"/>`;
     // slope mark
-    const sx = p.C + p.T + 0.45 * (xr - p.C - p.T), sy = p.H + (sx - p.C - p.T) * ta + 0.15;
+    const sx = p.C + p.T + 0.5 * (xr - p.C - p.T), sy = p.H + (sx - p.C - p.T) * ta + 0.1 + 0.5 * u;
     s += `<text class="lt" x="${F.X(sx)}" y="${F.Y(sy)}" text-anchor="middle">背填坡度 1 : ${p.n}</text>`;
     // wall
     s += `<polygon points="${F.P(wallPoly(p, B))}" fill="url(#pConc)" class="conc"/>`;
@@ -185,31 +204,29 @@
     const wy = Math.min(yb + 0.25, p.H - 0.2);
     s += `<line class="weep" x1="${F.X(p.C - 0.05)}" y1="${F.Y(wy - 0.04)}" x2="${F.X(backX(wy) + 0.05)}" y2="${F.Y(wy)}"/>`;
     // labels
-    const lab = (x, y, tx, ty, t, anchor = 'start') => `<line class="ldr" x1="${F.X(x)}" y1="${F.Y(y)}" x2="${F.X(tx)}" y2="${F.Y(ty)}"/><text class="bl" x="${F.X(tx) + (anchor === 'start' ? 3 : -3)}" y="${F.Y(ty) + 4}" text-anchor="${anchor}">${t}</text>`;
+    const lab = (x, y, tx, ty, t, anchor = 'start') => `<line class="ldr" x1="${F.X(x)}" y1="${F.Y(y)}" x2="${F.X(tx)}" y2="${F.Y(ty)}"/> <text class="bl" x="${F.X(tx) + (anchor === 'start' ? 4 : -4)}" y="${F.Y(ty) + 8}" text-anchor="${anchor}">${t}</text>`;
     const rx = B + 0.12 * L;
-    s += lab(backX(p.H - 0.25) - c, p.H - 0.25, rx * 0.55 + backX(p.H - 0.25) * 0.45 + 0.1, p.H - 0.12, 'S1');
+    s += lab(backX(p.H - 0.25) - c, p.H - 0.25, rx * 0.55 + backX(p.H - 0.25) * 0.45 + 0.1, p.H - 0.12 - 0.6 * u, 'S1');
     if (L2 > 0) s += lab(backX(yb + L2 * 0.6) - 2 * c, yb + L2 * 0.6, backX(yb + L2 * 0.6) + 0.35, yb + L2 * 0.6 + 0.1, 'S2');
     if (L3 > 0) s += lab(backX(yb + L3 * 0.4) - 2.8 * c, yb + L3 * 0.4, backX(yb + L3 * 0.4) + 0.35, yb + L3 * 0.4 - 0.05, 'S3');
     s += lab(p.C + c, yb + g.h * 0.45, p.C - 0.25, yb + g.h * 0.45 + 0.05, 'S8', 'end');
     const ring = d => `<circle class="ring" cx="${F.X(d[0])}" cy="${F.Y(d[1])}" r="6"/>`;
     const toward = (d, tx, ty) => { const dx = F.X(tx) - F.X(d[0]), dy = F.Y(ty) - F.Y(d[1]), L = Math.hypot(dx, dy) || 1; return [d[0] + (dx / L) * 6 / F.s, d[1] - (dy / L) * 6 / F.s]; };
-    if (t1) { const tp = [p.C - 0.25, t1[1] + 0.1]; s += ring(t1) + lab(...toward(t1, ...tp), ...tp, 'T1', 'end'); }
+    if (t1) { const tp = [p.C - 0.25, t1[1] - 0.3 * u]; s += ring(t1) + lab(...toward(t1, ...tp), ...tp, 'T1', 'end'); }
     s += lab((p.C + p.S + B) / 2, p.D2 + p.D1 / 2 - c, (p.C + p.S + B) / 2 + 0.15, yb + 0.35, 'S4');
     s += lab(B - 0.25, c, B + 0.12, -0.2, 'S5', 'start');
     if (t2) { const tp = [B + 0.15, p.D2 + 0.12]; s += ring(t2) + lab(...toward(t2, ...tp), ...tp, 'T2'); }
-    s += `<text class="bl small" x="${F.X(backX(wy)) + 8}" y="${F.Y(wy) + 4}">洩水孔</text>`;
+    s += `<text class="bl small" x="${F.X(backX(wy)) + 8}" y="${F.Y(wy) + 8}">洩水孔</text>`;
     // ---- dimensions ----
     // top T
     s += ext(F, p.C, p.H, p.C, p.H + 0.32) + ext(F, p.C + p.T, p.H, p.C + p.T, p.H + 0.32);
     s += dimH(F, p.C, p.C + p.T, p.H + 0.26, 'T=' + f2(p.T));
     // bottom chains
-    const y1 = -p.Kd - 0.22, y2 = -p.Kd - 0.5;
     for (const x of [0, p.C, p.C + p.S, B]) s += ext(F, x, 0, x, y1 - 0.06);
     s += ext(F, 0, 0, 0, y2 - 0.06) + ext(F, B, 0, B, y2 - 0.06);
     s += dimH(F, 0, p.C, y1, 'C=' + f2(p.C)) + dimH(F, p.C, p.C + p.S, y1, 'S=' + f2(p.S)) + dimH(F, p.C + p.S, B, y1, 'E=' + f2(p.E));
     s += dimH(F, 0, B, y2, 'B=' + f2(B));
     if (p.Kd > 0) {
-      const yk = -p.Kd - 0.08;
       s += dimH(F, 0, p.Kc, yk, p.Kc > 0 ? 'Kc=' + f2(p.Kc) : '', 'kc') + dimH(F, p.Kc, p.Kc + ks, yk, 'Ks');
     }
     // left vertical chain
@@ -229,7 +246,7 @@
       if (L2 > 0) s += ext(F, backX(yb + L2), yb + L2, xL + 0.05, yb + L2) + dimV(F, xL, yb, yb + L2, 'L2=' + f2(L2), 1);
       if (L3 > 0) s += ext(F, backX(yb + L3), yb + L3, xL - 0.12, yb + L3) + dimV(F, xL - 0.17, yb, yb + L3, 'L3=' + f2(L3), 1);
     }
-    s += `<text class="cap" x="${F.W - 8}" y="18" text-anchor="end">單位：m　η = ${(g.eta).toFixed(3)}</text>`;
+    s += `<text class="cap" x="${F.W - 8}" y="26" text-anchor="end">單位：m　η = ${(g.eta).toFixed(3)}</text>`;
     return s + '</svg>';
   }
 
