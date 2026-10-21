@@ -19,7 +19,9 @@
       ['gF', '承載層 γ', 'tf/m³'], ['phiF', '承載層 ϕ', '度'], ['cF', '承載層 c', 'tf/m²'],
       ['gC', '混凝土 γc', 'tf/m³'], ['gW', '水 γw', 'tf/m³']] },
     { t: '1.2 地表超載重及地下水位', f: [
-      ['qs', '牆背地表超載 qs', 'tf/m²'], ['hw1r', '牆背水位比 Hw1/H', ''], ['=hw1', '牆背水位 Hw1', 'm'],
+      ['qs', '牆背地表超載 qs', 'tf/m²'],
+      ['qsType', '超載性質（配筋載重組合）', '', 'select', [['L', '活載重 L'], ['D', '永久載重（歸 D、H）']]],
+      ['hw1r', '牆背水位比 Hw1/H', ''], ['=hw1', '牆背水位 Hw1', 'm'],
       ['hw2', '牆前水位 Hw2（自基底）', 'm'], ['wt', '基底位於地下水位下', '', 'bool']] },
     { t: '1.3 載重組合（含配筋規範與強度折減因子）', info: 'combo', f: [
       ['code', '配筋規範', '', 'select', [['hw', '公路橋梁設計規範'], ['c112', '112年混凝土規範']]]],
@@ -208,10 +210,10 @@
       ${eq('斷面厚度 t ／ 有效深度 d', n(r.t, 1) + ' / ' + n(r.d), 'cm')}
       ${eq('常時 V ／ M', n(r.Vn) + ' / ' + n(r.Mn), 'tf, tf·m')}
       ${eq('地震時 V ／ M', n(r.Ve) + ' / ' + n(r.Me), 'tf, tf·m')}
-      ${eq(`常時 Vu = ${o.cf.combN} ／ 地震時 Vu = ${o.cf.combE}`, n(r.Vun) + ' / ' + n(r.Vue), 'tf/m')}
+      ${eq(`常時 Vu：${o.cf.combN} ／ 地震時 Vu：${o.cf.combE}`, n(r.Vun) + ' / ' + n(r.Vue), 'tf/m')}
       ${eq('Vu = max(常時, 地震時)', n(r.Vu), 'tf/m', true)}
       ${eq(`φVc = ${n(o.cf.pv)}×0.53√fc'·b·d`, n(r.pVc), r.okV ? 'φVc≥Vu OK!' : 'φVc<Vu NG!')}
-      ${eq(`常時 Mu = ${o.cf.combN} ／ 地震時 Mu = ${o.cf.combE}`, n(r.Mun) + ' / ' + n(r.Mue), 'tf·m/m')}
+      ${eq(`常時 Mu${o.cf.cn.length > 1 ? '（' + o.cf.cn[r.gn].tag + ' 控制）' : ''} ／ 地震時 Mu${o.cf.ce.length > 1 ? '（' + o.cf.ce[r.ge].tag + ' 控制）' : ''}`, n(r.Mun) + ' / ' + n(r.Mue), 'tf·m/m')}
       ${eq('Mu = max(常時, 地震時)', n(r.Mu), 'tf·m/m', true)}
       ${eq('Rn = Mu/(φb·b·d²)', n(r.Rn, 3), 'kgf/cm²')}
       ${eq("ρ = (1/m)[1 − √(1 − 2mRn/fy)]，m = fy/0.85fc' = " + n(o.m, 3), r.rho > 1 ? '斷面不足' : n(r.rho, 4), '')}
@@ -243,6 +245,7 @@
       <tr><td>混凝土</td><td>${n(p.gC)}</td><td>NA</td><td>NA</td></tr></tbody></table></div>
     <h3>1.2 地表超載重及地下水位</h3>
     ${eq('牆背地表超載 qs', n(p.qs), 'tf/m/m')}
+    ${eq('超載性質（配筋載重組合）', p.qsType === 'D' ? '永久載重（歸 D、H）' : '活載重 L', '')}
     ${eq(`牆背地下水位 Hw1 = ${n(p.hw1r, 3)} × H`, n(o.hw1), 'm')}
     ${eq('牆前地下水位 Hw2（自基礎底面）', n(p.hw2), 'm')}
     <h3>1.3 載重組合（${o.cf.name}）</h3>
@@ -323,7 +326,7 @@
     <h3>5.1 設計條件</h3>
     <p>1. 牆身與基礎交界為剛性區。2. 牆身、趾版及踵版視為懸臂梁（公路橋梁設計規範 6.2.2、6.2.3）。
     3. 地震時土壓動態增量作用點依牆體變位模式（${o.mv.name}，第7.3.4節解說2，以斷面深度 z 取代 H），並計入牆身慣性力。4. 基礎版依地盤反力分 20 等分條帶積分；配筋時地盤反力以因數化載重（各分項乘載重係數）重新計算。
-    5. 載重組合（${o.cf.name}）：常時 ${o.cf.combN}；地震時 ${o.cf.combE}。</p>
+    5. 載重組合（${o.cf.name}）：常時 ${o.cf.combN}；地震時 ${o.cf.combE}。${o.cf.note ? o.cf.note + (P.qsType === 'D' ? '本案超載視為永久載重，垂直分量歸 D、側壓歸 H。' : '') : ''}多組組合時取最不利者。</p>
     ${eq("m = fy/0.85fc'", n(o.m, 3), '')}${eq('ρmin', n(o.rhoMin, 4), '')}
     <h3>5.2 牆身設計</h3>${o.rc.slice(0, 3).map(rcReport).join('')}
     ${o.min.slice(0, 2).map((m, i) => `<h4>(${i + 4}) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}
@@ -343,7 +346,7 @@
     if (cb) cb.innerHTML = `<table class="kv"><thead><tr><th></th><th>穩定分析</th><th>配筋設計</th></tr></thead><tbody>
       <tr><td>常時</td><td>D+L+H+F</td><td>${o.cf.combN}</td></tr>
       <tr><td>地震時</td><td>D+L+H+F+EQ</td><td>${o.cf.combE}</td></tr></tbody></table>
-      <p class="hint">D=靜載重　L=活載重　H=土壓力　F=水壓力　EQ=地震力</p>
+      <p class="hint">D=靜載重　L=活載重　H=土壓力　F=水壓力　EQ=地震力${o.cf.note ? '<br>' + o.cf.note : ''}</p>
       <table class="kv"><tbody><tr><td>強度折減因子 φb ／ φv</td><td class="num">${n(o.cf.pb)} / ${n(o.cf.pv)}</td></tr></tbody></table>`;
     summary(); drawSection(o); report();
     fmtSymbols(document.querySelector('.right')); fmtSymbols(document.getElementById('combo'));

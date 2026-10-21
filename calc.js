@@ -12,17 +12,28 @@
     [62.5,49.8,57.6],[77.0,63.4,80.0],[95.7,81.2,114.0]];
   const BARS = { 10: 0.7133, 13: 1.267, 16: 1.986, 19: 2.865, 22: 3.871, 25: 5.067, 29: 6.469, 32: 8.143, 36: 10.07 };
   const CODES = {
-    // 配筋載重組合分項係數：D 靜載重（含垂直土重、超載重）、H 側向土壓力（含超載側壓）、F 水壓力、EQ 地震力（動態增量、慣性力、動水壓）
-    hw: { name: '公路橋梁設計規範', fn: { D: 1.3, H: 1.69, F: 1.3, EQ: 0 }, fe: { D: 1.3, H: 1.69, F: 0, EQ: 1.3 },
+    // 配筋載重組合分項係數（每種狀況可有多組，取最不利）：
+    // D 靜載重（牆體、填土自重）、LV 超載垂直分量、LH 超載側壓、H 側向土壓力、F 水壓力（靜水壓、揚壓力）、EQ 地震力（動態增量、慣性力、動水壓）
+    hw: { name: '公路橋梁設計規範',
+      cn: [{ D: 1.3, LV: 1.3, LH: 1.69, H: 1.69, F: 1.3, EQ: 0 }],
+      ce: [{ D: 1.3, LV: 1.3, LH: 1.69, H: 1.69, F: 0, EQ: 1.3 }],
       combN: '1.3D + 1.69H + 1.3F', combE: '1.3D + 1.69H + 1.3EQ', pb: 0.9, pv: 0.85, s8: 0.0018, t1: 0.0025, t2: 0.0018 },
-    c112: { name: '112年混凝土結構設計規範', fn: { D: 1.6, H: 1.6, F: 1.6, EQ: 0 }, fe: { D: 1.2, H: 1.2, F: 1.2, EQ: 1.2 },
-      combN: '1.6(D+L+H+F)', combE: '1.2(D+L+H+F+EQ)', pb: 0.9, pv: 0.75, s8: 0.0015, t1: 0.0025, t2: 0.0018 }
+    // 112年混凝土規範 表5.3.1 + 第5.3.7節：H（含土中水壓）一律 1.6；超載為活載重 L；
+    // 常時 (5.3.1b) 1.2D+1.6L+1.6H，另依解說以 0.9D 檢核靜載重有利之斷面；地震時 (5.3.1e) 1.2D+1.0E+1.0L+1.6H、(5.3.1g) 0.9D+1.0E+1.6H
+    c112: { name: '112年混凝土結構設計規範',
+      cn: [{ D: 1.2, LV: 1.6, LH: 1.6, H: 1.6, F: 1.6, EQ: 0, tag: '1.2D+1.6L+1.6H' },
+           { D: 0.9, LV: 1.6, LH: 1.6, H: 1.6, F: 1.6, EQ: 0, tag: '0.9D+1.6L+1.6H' }],
+      ce: [{ D: 1.2, LV: 1.0, LH: 1.0, H: 1.6, F: 1.6, EQ: 1.0, tag: '1.2D+1.0E+1.0L+1.6H' },
+           { D: 0.9, LV: 0, LH: 0, H: 1.6, F: 1.6, EQ: 1.0, tag: '0.9D+1.0E+1.6H' }],
+      combN: '1.2D + 1.6L + 1.6H（另以 0.9D 檢核）', combE: '1.2D + 1.0E + 1.0L + 1.6H、0.9D + 1.0E + 1.6H',
+      note: '依第5.3.7節，H 含土中水壓，載重因數 1.6；地表超載視為活載重 L。',
+      pb: 0.9, pv: 0.75, s8: 0.0015, t1: 0.0025, t2: 0.0018 }
   };
 
   const DEFAULTS = {
     id: 'RW-1',
     gB: 1.91, phiB: 30, cB: 0, gF: 1.97, phiF: 29, cF: 1, gC: 2.4, gW: 1.0,
-    qs: 1.0, hw1r: 1 / 3, hw2: 0, wt: true,
+    qs: 1.0, qsType: 'L', hw1r: 1 / 3, hw2: 0, wt: true,
     fc: 280, fy: 4200, code: 'hw', kh: 0.16, kv: 0.08, pgaH: 0.32, pgaV: 0.16, khRes: false, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
     cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', deltaP: 0, kpOvr: null, kpeOvr: null,
@@ -85,7 +96,12 @@
   function compute(inp) {
     const p = Object.assign({}, inp);
     const o = { p };
-    const cf = CODES[p.code] || CODES.hw;
+    const cf0 = CODES[p.code] || CODES.hw;
+    // 超載性質：L＝活載重（依 L 係數）；D＝永久載重（垂直分量歸 D、側壓歸 H）
+    const qsPerm = p.qsType === 'D';
+    const adj = f => qsPerm ? { ...f, LV: f.D, LH: f.H } : f;
+    const cf = { ...cf0, cn: cf0.cn.map(adj), ce: cf0.ce.map(adj) };
+    if (p.code === 'c112' && qsPerm) { cf.combN = '1.2D + 1.6H（另以 0.9D 檢核；超載歸 D、H）'; cf.combE = '1.2D + 1.0E + 1.6H、0.9D + 1.0E + 1.6H（超載歸 D、H）'; }
     o.cf = cf;
     // geometry
     const g = o.g = {};
@@ -176,13 +192,13 @@
     const yQs = mv.t ? mv.t * p.H : N.yq;
     const itemComp = it => ({ c: it.name.startsWith('(13)') ? 'F' : 'D', V: it.W, x: it.x });
     N.comp = [...o.items.map(itemComp),
-      { c: 'H', H: N.Pah, y: N.ya }, { c: 'H', V: N.Pav, x: N.xa }, { c: 'H', H: N.Pqh, y: N.yq }, { c: 'D', V: N.Pqv, x: N.xq },
+      { c: 'H', H: N.Pah, y: N.ya }, { c: 'H', V: N.Pav, x: N.xa }, { c: 'LH', H: N.Pqh, y: N.yq }, { c: 'LV', V: N.Pqv, x: N.xq },
       { c: 'F', H: N.Pw, y: N.yw }, { c: 'F', V: -N.Pb, x: N.xb }];
     Q.comp = [...o.items.map(itemComp),
       ...o.items.map(it => ({ c: 'EQ', V: -p.kv * it.W, x: it.x })), ...o.items.map(it => ({ c: 'EQ', H: p.kh * it.W, y: it.y })),
       { c: 'H', H: N.Pah, y: yAs }, { c: 'EQ', H: Q.Paeh - N.Pah, y: yAd },
       { c: 'H', V: N.Pav, x: Q.xae }, { c: 'EQ', V: Q.Paev - N.Pav, x: Q.xae },
-      { c: 'H', H: N.Pqh, y: yQs }, { c: 'EQ', H: Q.Pqeh - N.Pqh, y: yAd }, { c: 'D', V: Q.Pqev, x: Q.xqe },
+      { c: 'LH', H: N.Pqh, y: yQs }, { c: 'EQ', H: Q.Pqeh - N.Pqh, y: yAd }, { c: 'LV', V: Q.Pqev, x: Q.xqe },
       { c: 'F', H: N.Pw, y: N.yw }, { c: 'EQ', H: dPw, y: 0.4 * hw1 }, { c: 'F', V: -Q.Pbe, x: Q.xbe }];
     Q.SV = o.SW * (1 - p.kv) + Q.Paev + Q.Pqev - Q.Pbe;
     Q.SH = p.kh * o.SW + Q.Paeh + Q.Pqeh + Q.Pwe;
@@ -219,14 +235,19 @@
       const Wst = (T * z + 0.5 * (S - T) * z * z / h) * gc + 0.5 * (S - T) * z * z / h * gB;
       const Mst = (T * z * z / 2 + 0.5 * (S - T) * z ** 3 / (3 * h)) * gc + 0.5 * (S - T) * z ** 3 / (3 * h) * gB;
       const Ve = Fe * (1 + rat) + Fw + dFw + Fq + dFq + p.kh * Wst, MeT = MeSoil + Mw + dFw * 0.4 * d + MqE + p.kh * Mst;
-      // 地震時之 H 為靜態側壓（作用點依變位模式），其餘為 EQ
-      const VHe = Fe + Fq, MHe = mv.t ? (Fe + Fq) * mv.t * z : (mv.s === null ? Me : Fe * mv.s * z) + Mq;
-      const fn = cf.fn, fe = cf.fe;
-      return {
-        Vn: Fe + Fw + Fq, Mn: Me + Mw + Mq, Ve, Me: MeT,
-        Vun: fn.H * (Fe + Fq) + fn.F * Fw, Mun: fn.H * (Me + Mq) + fn.F * Mw,
-        Vue: fe.H * VHe + fe.F * Fw + fe.EQ * (Ve - VHe - Fw), Mue: fe.H * MHe + fe.F * Mw + fe.EQ * (MeT - MHe - Mw)
-      };
+      // 地震時之 H 為靜態側壓（作用點依變位模式），超載靜態側壓為 LH，其餘為 EQ
+      const MHs = mv.t ? Fe * mv.t * z : (mv.s === null ? Me : Fe * mv.s * z), MHq = mv.t ? Fq * mv.t * z : Mq;
+      const VEQ = Ve - Fe - Fq - Fw, MEQ = MeT - MHs - MHq - Mw;
+      const fN = f => ({ V: f.H * Fe + f.LH * Fq + f.F * Fw, M: f.H * Me + f.LH * Mq + f.F * Mw });
+      const fE = f => ({ V: f.H * Fe + f.LH * Fq + f.F * Fw + f.EQ * VEQ, M: f.H * MHs + f.LH * MHq + f.F * Mw + f.EQ * MEQ });
+      const un = env(cf.cn.map(fN)), ue = env(cf.ce.map(fE));
+      return { Vn: Fe + Fw + Fq, Mn: Me + Mw + Mq, Ve, Me: MeT, Vun: un.V, Mun: un.M, Vue: ue.V, Mue: ue.M, gn: un.i, ge: ue.i };
+    }
+    // 多組載重組合取包絡（依 |M| 最大者，剪力另取最大）
+    function env(list) {
+      let iM = 0, iV = 0;
+      list.forEach((r, i) => { if (r.M > list[iM].M) iM = i; if (r.V > list[iV].V) iV = i; });
+      return { V: list[iV].V, M: list[iM].M, i: iM, iv: iV };
     }
     function design(title, z, t, f, Asp, desc) {
       const r = { title, z, t, desc, ...f };
@@ -256,8 +277,8 @@
     const pres = (u, X) => Math.abs(X.e) <= B / 6 ? X.qt + (X.qh - X.qt) * u / B :
       (X.e > 0 ? Math.max(0, X.qt * (1 - u / X.a)) : Math.max(0, X.qh * (1 - (B - u) / X.a)));
     const NS = 20;
-    function heel(X, fD = 1) { let V = 0, M = 0; const dx = E / NS; for (let i = 1; i <= NS; i++) { const x = (i - .5) * dx; const w = fD * (q0 + q1 + q2) - pres(B - x, X); V += w * dx; M += w * dx * (E - x); } return { V, M }; }
-    function toe(X, fD = 1) { let V = 0, M = 0; const dx = C / NS; for (let i = 1; i <= NS; i++) { const u = (i - .5) * dx; const w = pres(u, X) - fD * q2; V += w * dx; M += w * dx * (C - u); } return { V, M }; }
+    function heel(X, f = { D: 1, LV: 1 }) { let V = 0, M = 0; const dx = E / NS; for (let i = 1; i <= NS; i++) { const x = (i - .5) * dx; const w = f.LV * q0 + f.D * (q1 + q2) - pres(B - x, X); V += w * dx; M += w * dx * (E - x); } return { V, M }; }
+    function toe(X, f = { D: 1 }) { let V = 0, M = 0; const dx = C / NS; for (let i = 1; i <= NS; i++) { const u = (i - .5) * dx; const w = pres(u, X) - f.D * q2; V += w * dx; M += w * dx * (C - u); } return { V, M }; }
     // 因數化地盤反力：各分項載重乘係數後重算偏心與反力
     function factored(comp, f) {
       let SV = 0, Mr = 0, Md = 0;
@@ -269,12 +290,13 @@
       else { X.qt = 0; X.qh = 2 * SV / (3 * (B / 2 + X.e)); }
       return X;
     }
-    const Nu = o.nu = factored(N.comp, cf.fn), Qu = o.eu = factored(Q.comp, cf.fe);
+    o.nu = cf.cn.map(f => factored(N.comp, f)); o.eu = cf.ce.map(f => factored(Q.comp, f));
     const hn = heel(N), he = heel(Q), tn = toe(N), te = toe(Q);
-    const hnu = heel(Nu, cf.fn.D), heu = heel(Qu, cf.fe.D), tnu = toe(Nu, cf.fn.D), teu = toe(Qu, cf.fe.D);
+    const hnu = env(cf.cn.map((f, i) => heel(o.nu[i], f))), heu = env(cf.ce.map((f, i) => heel(o.eu[i], f)));
+    const tnu = env(cf.cn.map((f, i) => toe(o.nu[i], f))), teu = env(cf.ce.map((f, i) => toe(o.eu[i], f)));
     const tb = (D2 + D1) * 100;
-    o.rc.push(design('(1) 基礎踵端鋼筋 S4、S6（上層筋）', null, tb, { Vn: hn.V, Mn: hn.M, Ve: he.V, Me: he.M, Vun: hnu.V, Mun: hnu.M, Vue: heu.V, Mue: heu.M }, As('S4'), 'S4'));
-    o.rc.push(design('(2) 基礎趾端鋼筋 S5、S7（下層筋）', null, tb, { Vn: tn.V, Mn: tn.M, Ve: te.V, Me: te.M, Vun: tnu.V, Mun: tnu.M, Vue: teu.V, Mue: teu.M }, As('S5'), 'S5'));
+    o.rc.push(design('(1) 基礎踵端鋼筋 S4、S6（上層筋）', null, tb, { Vn: hn.V, Mn: hn.M, Ve: he.V, Me: he.M, Vun: hnu.V, Mun: hnu.M, Vue: heu.V, Mue: heu.M, gn: hnu.i, ge: heu.i }, As('S4'), 'S4'));
+    o.rc.push(design('(2) 基礎趾端鋼筋 S5、S7（下層筋）', null, tb, { Vn: tn.V, Mn: tn.M, Ve: te.V, Me: te.M, Vun: tnu.V, Mun: tnu.M, Vue: teu.V, Mue: teu.M, gn: tnu.i, ge: teu.i }, As('S5'), 'S5'));
     const taS = (T + S) / 2 * 100;
     o.min = [
       { k: 'S8', title: '暴露面垂直鋼筋 S8（單層）', rho: cf.s8, Asr: cf.s8 * 100 * taS / 2, Asp: As('S8'), basis: `ρt·b·ta/2，ta = ${taS.toFixed(1)} cm` },
