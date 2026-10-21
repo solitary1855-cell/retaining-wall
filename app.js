@@ -252,7 +252,7 @@
     <div class="scroll"><table class="t"><thead><tr><th></th><th>穩定分析</th><th>配筋設計</th></tr></thead><tbody>
       <tr><td>常時</td><td>D+L+H+F</td><td>${o.cf.combN}</td></tr>
       <tr><td>地震時</td><td>D+L+H+F+EQ</td><td>${o.cf.combE}</td></tr></tbody></table></div>
-    <p class="note">D：靜載重（含踵版上土重、超載重）；H：側向土壓力（含超載側壓）；F：水壓力；EQ：地震力（動態土壓增量、牆體慣性力、動水壓）。${P.code === 'hw' ? '地震時組合不計靜水壓 F（Westergaard 動水壓屬 EQ）。' : ''}</p>
+    <p class="note">D：靜載重（含踵版上土重、超載重）；H：側向土壓力（含超載側壓）；F：水壓力；EQ：地震力（動態土壓增量、牆體慣性力、動水壓）。${P.code === 'hw' ? '地震時（表3.3 分類Ⅶ）浮力 B 欄 β＝1，靜水壓與揚壓力 F 以 1.3 計入；Westergaard 動水壓屬 EQ。' : ''}</p>
     ${eq('強度折減因子：彎矩 φb ／ 剪力 φv', n(o.cf.pb) + ' / ' + n(o.cf.pv), '')}
     <h3>1.4 材料設計強度</h3>
     ${eq("混凝土強度 fc'", n(p.fc, 0), 'kgf/cm²')}${eq('鋼筋降伏強度 fy', n(p.fy, 0), 'kgf/cm²')}
