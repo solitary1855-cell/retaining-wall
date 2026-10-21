@@ -247,3 +247,4 @@ details.grp > summary::-webkit-details-marker { display: none; }
 .sym sub, .sym sup { font-size: 72%; line-height: 0; }
 .sym sub { vertical-align: -0.28em; }
 .sym sup { vertical-align: 0.45em; margin-right: -0.05em; }
+.grp.plain > .fields { padding-top: 12px; }

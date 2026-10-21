@@ -11,33 +11,100 @@
   function fix(q) { if (!['coulomb', 'ck'].includes(q.kpm)) q.kpm = 'rankine'; return q; }  // 已移除「範例沿用法」
   function save() { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {} }
 
+  // ---------- 建議尺寸（依牆高 H） ----------
+  // 依「道路工程參考圖（勘誤版）」R-008 鋼筋混凝土懸臂式擋土牆 表一（H = 4.70～10.50 m）內插；H < 4.70 m 依 4.70 m 列等比例外推
+  const PRESETS = [{"H": 1.5, "T": 0.3, "D1": 0, "D2": 0.35, "C": 0.3, "S": 0.4, "E": 0.55, "Kd": 0.3, "Ks": 0.3, "Kc": 0.55, "Df": 0.6, "src": "外推"}, {"H": 2.0, "T": 0.3, "D1": 0, "D2": 0.35, "C": 0.3, "S": 0.4, "E": 0.75, "Kd": 0.3, "Ks": 0.3, "Kc": 0.65, "Df": 0.6, "src": "外推"}, {"H": 2.5, "T": 0.3, "D1": 0, "D2": 0.35, "C": 0.3, "S": 0.4, "E": 0.95, "Kd": 0.3, "Ks": 0.3, "Kc": 0.7, "Df": 0.6, "src": "外推"}, {"H": 3.0, "T": 0.3, "D1": 0, "D2": 0.45, "C": 0.4, "S": 0.4, "E": 1.1, "Kd": 0.3, "Ks": 0.3, "Kc": 0.85, "Df": 0.6, "src": "外推"}, {"H": 3.5, "T": 0.3, "D1": 0, "D2": 0.5, "C": 0.45, "S": 0.5, "E": 1.3, "Kd": 0.3, "Ks": 0.3, "Kc": 1.05, "Df": 0.6, "src": "外推"}, {"H": 4.0, "T": 0.3, "D1": 0, "D2": 0.6, "C": 0.5, "S": 0.55, "E": 1.5, "Kd": 0.35, "Ks": 0.35, "Kc": 1.2, "Df": 0.6, "src": "外推"}, {"H": 4.5, "T": 0.3, "D1": 0, "D2": 0.65, "C": 0.55, "S": 0.6, "E": 1.7, "Kd": 0.4, "Ks": 0.4, "Kc": 1.3, "Df": 0.6, "src": "外推"}, {"H": 5.0, "T": 0.3, "D1": 0, "D2": 0.75, "C": 0.65, "S": 0.7, "E": 1.85, "Kd": 0.4, "Ks": 0.4, "Kc": 1.45, "Df": 0.6, "src": "內插"}, {"H": 5.5, "T": 0.3, "D1": 0, "D2": 0.8, "C": 0.65, "S": 0.7, "E": 2.0, "Kd": 0.4, "Ks": 0.4, "Kc": 1.45, "Df": 0.6, "src": "內插"}, {"H": 6.0, "T": 0.3, "D1": 0, "D2": 0.9, "C": 0.7, "S": 0.8, "E": 2.2, "Kd": 0.45, "Ks": 0.45, "Kc": 1.6, "Df": 0.6, "src": "內插"}, {"H": 6.5, "T": 0.3, "D1": 0, "D2": 0.95, "C": 0.75, "S": 0.85, "E": 2.45, "Kd": 0.5, "Ks": 0.5, "Kc": 1.55, "Df": 0.6, "src": "內插"}, {"H": 7.0, "T": 0.3, "D1": 0, "D2": 1.05, "C": 0.75, "S": 0.9, "E": 2.8, "Kd": 0.5, "Ks": 0.5, "Kc": 1.95, "Df": 0.6, "src": "內插"}, {"H": 7.5, "T": 0.3, "D1": 0, "D2": 1.1, "C": 0.85, "S": 1.0, "E": 3.1, "Kd": 0.6, "Ks": 0.6, "Kc": 1.95, "Df": 0.6, "src": "內插"}, {"H": 8.0, "T": 0.3, "D1": 0, "D2": 1.15, "C": 0.85, "S": 1.05, "E": 3.5, "Kd": 0.6, "Ks": 0.6, "Kc": 2.3, "Df": 0.6, "src": "內插"}, {"H": 8.5, "T": 0.3, "D1": 0, "D2": 1.2, "C": 0.9, "S": 1.1, "E": 3.8, "Kd": 0.6, "Ks": 0.6, "Kc": 2.05, "Df": 0.6, "src": "內插"}, {"H": 9.0, "T": 0.3, "D1": 0, "D2": 1.25, "C": 0.95, "S": 1.2, "E": 4.15, "Kd": 0.6, "Ks": 0.6, "Kc": 2.2, "Df": 0.6, "src": "內插"}, {"H": 9.5, "T": 0.3, "D1": 0, "D2": 1.3, "C": 1.0, "S": 1.25, "E": 4.65, "Kd": 0.65, "Ks": 0.65, "Kc": 2.75, "Df": 0.6, "src": "內插"}, {"H": 10.0, "T": 0.3, "D1": 0, "D2": 1.45, "C": 1.05, "S": 1.3, "E": 5.2, "Kd": 0.7, "Ks": 0.7, "Kc": 3.35, "Df": 0.6, "src": "內插"}, {"H": 10.5, "T": 0.3, "D1": 0, "D2": 1.5, "C": 1.05, "S": 1.35, "E": 5.6, "Kd": 0.7, "Ks": 0.7, "Kc": 3.8, "Df": 0.6, "src": "R-008 表列"}];
+  // R-008 表二 鋼筋配置（依牆身高 J）：①→S4 踵版上層、②→S5 趾版下層、④→T2、⑥→S1 牆背主筋、⑦→S2 牆背補強（a＝長度）、⑧→S8 暴露面、⑨→T1
+  const RBARS = [
+    { J: 4.0, S1: [19, 30], S2: [19, 30, 263], S4: [19, 15], S5: [13, 30], S8: [13, 30] },
+    { J: 4.5, S1: [19, 30], S2: [19, 30, 293], S4: [19, 15], S5: [16, 30], S8: [13, 30] },
+    { J: 5.0, S1: [22, 30], S2: [22, 30, 328], S4: [22, 15], S5: [16, 30], S8: [13, 30] },
+    { J: 5.5, S1: [22, 30], S2: [22, 30, 363], S4: [25, 15], S5: [19, 30], S8: [16, 30] },
+    { J: 6.0, S1: [22, 30], S2: [22, 30, 398], S4: [25, 15], S5: [19, 30], S8: [16, 30] },
+    { J: 6.5, S1: [25, 30], S2: [25, 30, 428], S4: [25, 15], S5: [19, 30], S8: [16, 30] },
+    { J: 7.0, S1: [25, 30], S2: [25, 30, 458], S4: [25, 15], S5: [19, 30], S8: [16, 30] },
+    { J: 7.5, S1: [25, 30], S2: [25, 30, 488], S4: [29, 15], S5: [22, 30], S8: [16, 30] },
+    { J: 8.0, S1: [29, 30], S2: [29, 30, 518], S4: [29, 15], S5: [22, 30], S8: [19, 30] },
+    { J: 8.5, S1: [29, 30], S2: [29, 30, 563], S4: [32, 15], S5: [22, 30], S8: [19, 30] },
+    { J: 9.0, S1: [32, 30], S2: [32, 30, 593], S4: [25, 7.5], S5: [22, 30], S8: [19, 30] }  // ① 2-D25@15 以 D25@7.5 計
+  ];
+  const DIMK = ['T', 'H', 'C', 'S', 'E', 'D1', 'D2', 'Kd', 'Kc', 'Df', 'Ks'];
+  function applyPreset(h) {
+    const q = PRESETS.find(x => String(x.H) === h); if (!q) return;
+    DIMK.forEach(k => { P[k] = q[k]; });
+    const hs = +(q.H - q.D1 - q.D2).toFixed(2);
+    // 取 R-008 表二中牆身高 J ≥ 本牆身高之最小一欄（偏保守）
+    const rb = RBARS.find(x => x.J >= hs - 1e-6) || RBARS[RBARS.length - 1];
+    const set = (k, d, s, L) => { P.bars[k].D = d; P.bars[k].s = s; if (L !== undefined) P.bars[k].L = L; };
+    set('S1', rb.S1[0], rb.S1[1], hs);
+    const L2 = Math.min(hs, Math.max(0, Math.round((rb.S2[2] / 100 - q.D2 + 0.10) / 0.05) * 0.05));
+    set('S2', rb.S2[0], rb.S2[1], +L2.toFixed(2));
+    set('S3', P.bars.S3.D, 0, 0);  // R-008 牆背僅 ⑥、⑦ 兩種，S3 不使用（間距 0）
+    set('S4', rb.S4[0], rb.S4[1]); set('S5', rb.S5[0], rb.S5[1]); set('S8', rb.S8[0], rb.S8[1]);
+    set('T1', 13, 30); set('T2', 13, 30);
+    // 主筋：R-008 表二配筋若不足目前所選規範之需求，逐級加大號數（S1、S2 同步）
+    try {
+      const SIZES = [13, 16, 19, 22, 25, 29, 32, 36];
+      const up = k => { const i = SIZES.indexOf(P.bars[k].D); if (i >= 0 && i < SIZES.length - 1) { P.bars[k].D = SIZES[i + 1]; return true; } if (P.bars[k].s > 10) { P.bars[k].s = +(P.bars[k].s - 2.5).toFixed(1); return true; } return false; };
+      for (let it = 0; it < 12; it++) {
+        const o1 = RW.compute(P); let changed = false;
+        for (const r of o1.rc) if (!(r.okM && r.okV)) {
+          if (/^S1/.test(r.desc)) { changed = up('S1') | up('S2') || changed; }
+          else if (r.desc === 'S4') changed = up('S4') || changed;
+          else if (r.desc === 'S5') changed = up('S5') || changed;
+        }
+        if (!changed) break;
+      }
+    } catch (e) {}
+    // 溫度筋／暴露面筋：R-008 為 D13@30，若不足目前規範最少鋼筋量則自動加大
+    try {
+      const o2 = RW.compute(P);
+      for (const m of o2.min) if (!m.ok) {
+        const need = m.Asr / (m.k === 'S8' ? 1 : 2);
+        let best = null;
+        for (const d of [13, 16, 19, 22]) for (const s of [30, 25, 20, 15]) { const As = RW.BARS[d] * 100 / s; if (As >= need && (!best || As < best.As)) best = { d, s, As }; }
+        if (best) set(m.k, best.d, best.s);
+      }
+    } catch (e) {}
+    P.barSrc = `R-008 表二 J = ${rb.J.toFixed(1)} m`;
+  }
+
+
   // ---------- form schema ----------
   const G = [
-    { t: '基本資料', open: true, f: [['id', '計算書編號', '', 'text']] },
-    { t: '1.1 材料參數', f: [
+    { plain: true, f: [['id', '計算書編號', '', 'text']] },
+    { t: '1. 擋土牆設計尺寸', open: true, f: [
+      ['preset', '建議尺寸（選擇牆高 H）', '', 'select', [['', '自訂'], ...PRESETS.map(q => [String(q.H), `H = ${q.H.toFixed(1)} m`])]],
+      ['H', '(1) 牆體全高 H', 'm'], ['T', '(2) 牆身頂寬 T', 'm'], ['=h', '(3) 牆身高度 h', 'm'],
+      ['=B', '(4) 基礎寬度 B', 'm'], ['C', '(5) 基礎趾長 C', 'm'], ['S', '(6) 牆身底寬 S', 'm'],
+      ['E', '(7) 基礎踵長 E', 'm'], ['D1', '(8) 基礎上高 D1', 'm'], ['D2', '(9) 基礎下高 D2', 'm'],
+      ['=eta', '(10) 牆背斜率 η', ''], ['Kd', '(11) 止滑榫尺寸 Kd', 'm'], ['Kc', '(12) 止滑榫位置 Kc', 'm'],
+      ['Df', '(13) 趾版覆土 Df', 'm'], ['=Y', '(14) 牆前回填 Y', 'm'], ['n', '(15) 背填坡度 1V : nH', 'n'],
+      ['Ks', '止滑榫寬度 Ks（繪圖用）', 'm']],
+      hint: '選擇牆高 H 即帶入建議尺寸，之後仍可自行修改任一尺寸（修改後顯示「自訂」）。實際條件不同時請自行檢核調整。' },
+    { t: '2. 材料參數', f: [
       ['gB', '背填土 γ', 'tf/m³'], ['phiB', '背填土 ϕ', '度'], ['cB', '背填土 c', 'tf/m²'],
       ['gF', '承載層 γ', 'tf/m³'], ['phiF', '承載層 ϕ', '度'], ['cF', '承載層 c', 'tf/m²'],
       ['gC', '混凝土 γc', 'tf/m³'], ['gW', '水 γw', 'tf/m³']] },
-    { t: '1.2 地表超載重及地下水位', f: [
+    { t: '3. 地表超載重及地下水位', f: [
       ['qs', '牆背地表超載 qs', 'tf/m²'],
       ['qsType', '超載性質（配筋載重組合）', '', 'select', [['L', '活載重 L'], ['D', '永久載重（歸 D、H）']]],
       ['hw1r', '牆背水位比 Hw1/H', ''], ['=hw1', '牆背水位 Hw1', 'm'],
       ['hw2', '牆前水位 Hw2（自基底）', 'm'], ['wt', '基底位於地下水位下', '', 'bool']] },
-    { t: '1.3 載重組合（含配筋規範與強度折減因子）', info: 'combo', f: [
+    { t: '4. 載重組合（含配筋規範與強度折減因子）', info: 'combo', f: [
       ['code', '配筋規範', '', 'select', [['hw', '公路橋梁設計規範'], ['c112', '112年混凝土規範']]]],
-      hint: '公路橋梁：常時 1.3D+1.69H+1.3F、地震時 1.3D+1.69H+1.3EQ（不計 F），φb=0.9、φv=0.85、ρmin=14/fy；112版：1.6／1.2、φv=0.75、ρmin=max(0.8√fc\'/fy,14/fy)' },
-    { t: '1.4 材料設計強度', f: [['fc', "混凝土 fc'", 'kgf/cm²'], ['fy', '鋼筋 fy', 'kgf/cm²']] },
-    { t: '1.5 地震係數', f: [
+      hint: '係數依所選規範自動帶入（公路橋梁設計規範 第3.23節表3.3；112年混凝土規範 表5.3.1及第5.3.6、5.3.7節），組合內容見下表。' },
+    { t: '5. 材料設計強度及保護層', f: [['fc', "混凝土 fc'", 'kgf/cm²'], ['fy', '鋼筋 fy', 'kgf/cm²'], ['cover', "保護層 d'", 'cm']] },
+    { t: '6. 地震係數', f: [
       ['pgaH', '地表水平向尖峰加速度 PGAh', 'g'], ['pgaV', '地表垂直向尖峰加速度 PGAv', 'g'],
       ['khRes', '牆體側向位移完全受限', '', 'bool'], ['=khS', 'kh 建議值', ''], ['=kvS', 'kv 建議值', ''],
       ['kh', '水平向地震係數 kh（採用）', ''], ['kv', '垂直向地震係數 kv（採用）', ''],
       ['mvm', '牆體變位模式', '', 'select', [['rotBase', '對牆底旋轉'], ['slide', '滑移'], ['rotTop', '對牆頂旋轉']]]],
       hint: '基礎規範(112) 第7.3.4節解說3：kh 取地表水平向尖峰加速度之半，側向位移完全受限取 1.5 倍；kv 取垂直向之半，遠距離地震可令 kv = 0。可參考建築物耐震設計規範設計地震（475年回歸期）EPA。變位模式決定動態土壓力作用點（解說2）。' },
-    { t: '1.6 安全係數', f: [
+    { t: '7. 安全係數', f: [
       ['fss_n', '抗滑動（常時）', ''], ['fss_e', '抗滑動（地震）', ''], ['fso_n', '抗傾覆（常時）', ''],
       ['fso_e', '抗傾覆（地震）', ''], ['fsb_n', '抗承載（常時）', ''], ['fsb_e', '抗承載（地震）', '']] },
-    { t: '1.7 保護層', f: [['cover', "保護層 d'", 'cm']] },
-    { t: '1.8 土壓力參數', f: [
+    { t: '8. 土壓力參數', f: [
       ['deltaR', '常時牆背摩擦角比 δ/ϕ', ''], ['=dN', '常時 δ', '度'],
       ['deltaRE', '地震時牆背摩擦角比 δ/ϕ', ''], ['=dE', '地震時 δ', '度'],
       ['kam', 'Ka 計算方法', '', 'select', [['coulomb', 'Coulomb'], ['rankine', 'Rankine']]],
@@ -46,22 +113,16 @@
       ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb'], ['ck', 'Caquot-Kerisel']]],
       ['deltaP', '被動牆面摩擦角 δp', '度'], ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt']],
       hint: 'Ka — Coulomb：式(7.3-5)，背填土 ϕ、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp 不宜大於 2ϕ/3。地震時 KPE 依式(7.3-14)，亦可指定。' },
-    { t: '2.1 擋土牆設計尺寸', open: true, f: [
-      ['T', '(1) 牆身頂寬 T', 'm'], ['H', '(2) 牆體全高 H', 'm'], ['=h', '(3) 牆身高度 h', 'm'],
-      ['=B', '(4) 基礎寬度 B', 'm'], ['C', '(5) 基礎趾長 C', 'm'], ['S', '(6) 牆身底寬 S', 'm'],
-      ['E', '(7) 基礎踵長 E', 'm'], ['D1', '(8) 基礎上高 D1', 'm'], ['D2', '(9) 基礎下高 D2', 'm'],
-      ['=eta', '(10) 牆背斜率 η', ''], ['Kd', '(11) 止滑榫尺寸 Kd', 'm'], ['Kc', '(12) 止滑榫位置 Kc', 'm'],
-      ['Df', '(13) 趾版覆土 Df', 'm'], ['=Y', '(14) 牆前回填 Y', 'm'], ['n', '(15) 背填坡度 1V : nH', 'n'],
-      ['Ks', '止滑榫寬度 Ks（繪圖用）', 'm']] },
-    { t: '2.2 擋土牆配筋設計', bars: true }
+    { t: '9. 擋土牆配筋設計', bars: true }
+
   ];
 
   const form = document.getElementById('form');
   function buildForm() {
     form.innerHTML = '';
     for (const g of G) {
-      const d = document.createElement('details'); d.className = 'grp'; if (g.open) d.open = true;
-      d.innerHTML = `<summary>${g.t}</summary>`;
+      const d = document.createElement(g.plain ? 'div' : 'details'); d.className = g.plain ? 'grp plain' : 'grp'; if (g.open) d.open = true;
+      if (!g.plain) d.innerHTML = `<summary>${g.t}</summary>`;
       const box = document.createElement('div'); box.className = 'fields';
       if (g.hint) box.insertAdjacentHTML('beforeend', `<p class="hint">${g.hint}</p>`);
       if (g.info && !g.f) {
@@ -105,6 +166,8 @@
       if (t === 'text') P[k] = el.value;
       else if (t === 'bool') P[k] = el.value === '1';
       else if (el.tagName === 'SELECT') P[k] = el.value;
+      if (k === 'preset') { applyPreset(el.value); save(); buildForm(); fmtSymbols(form); run(); return; }
+      if (DIMK.includes(k) && P.preset) { P.preset = ''; const ps = document.getElementById('in_preset'); if (ps) ps.value = ''; }
       else if (t === 'opt') P[k] = el.value.trim() === '' ? null : parseFloat(el.value);
       else { const v = parseFloat(el.value); if (!isFinite(v)) return; P[k] = v; }
     }
@@ -273,7 +336,7 @@
     <h2>2. 擋土牆設計尺寸及分析結果</h2>
     <h3>2.1 擋土牆設計尺寸</h3>
     <div class="dimrow"><div class="dimtab">    <div class="scroll"><table class="t"><tbody>
-      ${[['(1) 牆身頂寬 T', p.T], ['(2) 牆體全高 H', p.H], ['(3) 牆身高度 h', g.h], ['(4) 基礎寬度 B', g.B], ['(5) 基礎趾長 C', p.C],
+      ${[['(1) 牆體全高 H', p.H], ['(2) 牆身頂寬 T', p.T], ['(3) 牆身高度 h', g.h], ['(4) 基礎寬度 B', g.B], ['(5) 基礎趾長 C', p.C],
         ['(6) 牆身底寬 S', p.S], ['(7) 基礎踵長 E', p.E], ['(8) 基礎上高 D1', p.D1], ['(9) 基礎下高 D2', p.D2], ['(10) 牆背斜率 η', g.eta],
         ['(11) 止滑榫尺寸 Kd', p.Kd], ['(12) 止滑榫位置 Kc', p.Kc], ['(13) 趾版覆土 Df', p.Df], ['(14) 牆前回填 Y', g.Y]]
         .map(([a, b]) => `<tr><td>${a} (m)</td><td>${n(b)}</td></tr>`).join('')}

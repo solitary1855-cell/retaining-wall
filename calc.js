@@ -33,12 +33,14 @@
 
   const DEFAULTS = {
     id: 'RW-1',
-    gB: 1.91, phiB: 30, cB: 0, gF: 1.97, phiF: 29, cF: 1, gC: 2.4, gW: 1.0,
-    qs: 1.0, qsType: 'L', hw1r: 1 / 3, hw2: 0, wt: true,
-    fc: 280, fy: 4200, code: 'hw', kh: 0.16, kv: 0.08, pgaH: 0.32, pgaV: 0.16, khRes: false, mvm: 'rotBase',
+    // 預設條件比照「道路工程參考圖」R-008：背填土 γ=1.9、活載重相當 60cm 土重、Z=0.33、f'c=210、牆背設濾層洩水（不計水位）；
+    // 承載層採緊密礫石級配（R-008 附註10：承載力不足時挖除以礫石級配回填）
+    gB: 1.9, phiB: 30, cB: 0, gF: 2.1, phiF: 38, cF: 0, gC: 2.4, gW: 1.0,
+    qs: 1.14, qsType: 'L', hw1r: 0, hw2: 0, wt: false,
+    fc: 210, fy: 4200, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
     cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', deltaP: 0, kpOvr: null, kpeOvr: null,
-    T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
+    preset: '', T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
       S4: { D: 16, s: 20 }, S5: { D: 16, s: 30 }, S8: { D: 19, s: 30 }, T1: { D: 19, s: 30 }, T2: { D: 19, s: 30 }
@@ -218,7 +220,7 @@
     for (const [X, sfx, elim] of [[N, 'n', 6], [Q, 'e', 3]]) stability(X, p, g, sfx, elim);
 
     // ---------- 配筋 ----------
-    const bar = k => { const b = p.bars[k]; const Ab = BARS[b.D] || 0; return { Ab, As: Ab * 100 / b.s }; };
+    const bar = k => { const b = p.bars[k]; const Ab = BARS[b.D] || 0; return { Ab, As: b.s > 0 ? Ab * 100 / b.s : 0 }; };
     o.bar = {}; for (const k of Object.keys(p.bars)) o.bar[k] = bar(k);
     const KAH = N.Ka * cos(N.incl), KAEH = Q.Kae * (1 - p.kv) * cos(Q.delta + N.theta);
     o.KAH = KAH; o.KAEH = KAEH; o.m = p.fy / (0.85 * p.fc);
