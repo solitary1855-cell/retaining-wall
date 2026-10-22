@@ -151,7 +151,6 @@
         <line class="res pp-a" x1="${F.X(xk - kw) - 50}" y1="${F.Y(-p.Kd / 2)}" x2="${F.X(xk) - 2}" y2="${F.Y(-p.Kd / 2)}" marker-end="url(#ar)"/>
         <text class="rt" x="${F.X(xk - kw) - 56}" y="${F.Y(-p.Kd / 2) + 8}" text-anchor="end">Pp = ${f2(X.Pp)}</text>`;
     }
-    s += `<text class="cap" x="${F.W - 8}" y="26" text-anchor="end">${mode === 'e' ? '地震時' : '常時'}　ΣV = ${f2(X.SV)} tf　ΣH = ${f2(X.SH)} tf　e = ${f2(X.e)} m</text>`;
     return s + '</svg>';
   }
 
@@ -246,7 +245,6 @@
       if (L2 > 0) s += ext(F, backX(yb + L2), yb + L2, xL + 0.05, yb + L2) + dimV(F, xL, yb, yb + L2, 'L2=' + f2(L2), 1);
       if (L3 > 0) s += ext(F, backX(yb + L3), yb + L3, xL - 0.12, yb + L3) + dimV(F, xL - 0.17, yb, yb + L3, 'L3=' + f2(L3), 1);
     }
-    s += `<text class="cap" x="${F.W - 8}" y="26" text-anchor="end">單位：m　η = ${(g.eta).toFixed(3)}</text>`;
     return s + '</svg>';
   }
 
