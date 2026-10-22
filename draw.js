@@ -199,9 +199,6 @@
     for (let x = 0.15; x < B - 0.05; x += 0.2) { dots += `<circle class="rd" cx="${F.X(x)}" cy="${F.Y(c + 0.03)}" r="2.2"/>`; }
     for (let x = p.C + p.S + 0.1; x < B - 0.05; x += 0.2) { const yt = p.D2 + p.D1 * (B - x) / Math.max(p.E, 1e-6); t2 = [x, yt - c - 0.03]; dots += `<circle class="rd" cx="${F.X(x)}" cy="${F.Y(yt - c - 0.03)}" r="2.2"/>`; }
     s += dots;
-    // weep hole
-    const wy = Math.min(yb + 0.25, p.H - 0.2);
-    s += `<line class="weep" x1="${F.X(p.C - 0.05)}" y1="${F.Y(wy - 0.04)}" x2="${F.X(backX(wy) + 0.05)}" y2="${F.Y(wy)}"/>`;
     // labels
     const lab = (x, y, tx, ty, t, anchor = 'start') => `<line class="ldr" x1="${F.X(x)}" y1="${F.Y(y)}" x2="${F.X(tx)}" y2="${F.Y(ty)}"/> <text class="bl" x="${F.X(tx) + (anchor === 'start' ? 4 : -4)}" y="${F.Y(ty) + 8}" text-anchor="${anchor}">${t}</text>`;
     const rx = B + 0.12 * L;
@@ -215,7 +212,6 @@
     s += lab((p.C + p.S + B) / 2, p.D2 + p.D1 / 2 - c, (p.C + p.S + B) / 2 + 0.15, yb + 0.35, 'S4');
     s += lab(B - 0.25, c, B + 0.12, -0.2, 'S5', 'start');
     if (t2) { const tp = [B + 0.15, p.D2 + 0.12]; s += ring(t2) + lab(...toward(t2, ...tp), ...tp, 'T2'); }
-    s += `<text class="bl small" x="${F.X(backX(wy)) + 8}" y="${F.Y(wy) + 8}">洩水孔</text>`;
     // ---- dimensions ----
     // top T
     s += ext(F, p.C, p.H, p.C, p.H + 0.32) + ext(F, p.C + p.T, p.H, p.C + p.T, p.H + 0.32);
