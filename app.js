@@ -283,7 +283,8 @@
       ${eq('Pp = γp(Y + Kd/2)·Kp·Kd', n(X.Pp), 'tf')}
       ${eq("L' = B − 2|e|", n(X.Lp), 'm')}
       ${eq('L1 = min(Kc, Kd/tan(45−ϕ/2))', n(X.L1), 'm')}
-      ${eq("V1 = L1/L'·ΣV ／ V2 = ΣV − V1", n(X.V1) + ' / ' + n(X.V2), 'tf')}
+      ${eq("V1 = L1/L'·ΣV", n(X.V1), 'tf')}
+      ${eq('V2 = ΣV − V1', n(X.V2), 'tf')}
       ${eq('ΣHu = V1·tanϕ + V2·tan(2ϕ/3) + (c/2)·B + 50%·Pp', n(X.Hu), 'tf')}
       ${eq('ΣHd', n(X.SH), 'tf')}
       ${eq('FS = ΣHu / ΣHd', n(X.FSs), ok(X.okS, '≥ ' + n(X.fss, 1)), true)}</div><div class="sf-fig">${RWDraw.slide()}</div></div>`;
