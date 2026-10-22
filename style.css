@@ -257,3 +257,4 @@ details.grp > summary::-webkit-details-marker { display: none; }
 
 .report table.t td.fxc { white-space: nowrap; padding: 6px 10px; }
 .report table.t td.fxc math { font-size: 1.05em; }
+.f label .rel { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }

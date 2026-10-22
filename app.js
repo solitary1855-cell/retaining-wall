@@ -78,11 +78,11 @@
     { plain: true, f: [['id', '計算書編號', '', 'text']] },
     { t: '1. 擋土牆設計尺寸', open: true, f: [
       ['preset', '建議尺寸（選擇牆高 H）', '', 'select', [['', '自訂'], ...PRESETS.map(q => [String(q.H), `H = ${q.H.toFixed(1)} m`])]],
-      ['H', '(1) 牆體全高 H', 'm'], ['T', '(2) 牆身頂寬 T', 'm'], ['=h', '(3) 牆身高度 h', 'm'],
-      ['=B', '(4) 基礎寬度 B', 'm'], ['C', '(5) 基礎趾長 C', 'm'], ['S', '(6) 牆身底寬 S', 'm'],
+      ['H', '(1) 牆體全高 H', 'm'], ['T', '(2) 牆身頂寬 T', 'm'], ['=h', '(3) 牆身高度 h = H − D1 − D2', 'm'],
+      ['=B', '(4) 基礎寬度 B = C + S + E', 'm'], ['C', '(5) 基礎趾長 C', 'm'], ['S', '(6) 牆身底寬 S', 'm'],
       ['E', '(7) 基礎踵長 E', 'm'], ['D1', '(8) 基礎上高 D1', 'm'], ['D2', '(9) 基礎下高 D2', 'm'],
-      ['=eta', '(10) 牆背斜率 η', ''], ['Kd', '(11) 止滑榫尺寸 Kd', 'm'], ['Kc', '(12) 止滑榫位置 Kc', 'm'],
-      ['Df', '(13) 趾版覆土 Df', 'm'], ['=Y', '(14) 牆前回填 Y', 'm'], ['n', '(15) 背填坡度 1V : nH', 'n'],
+      ['=eta', '(10) 牆背斜率 η = (S − T)/h', ''], ['Kd', '(11) 止滑榫尺寸 Kd', 'm'], ['Kc', '(12) 止滑榫位置 Kc', 'm'],
+      ['Df', '(13) 趾版覆土 Df', 'm'], ['=Y', '(14) 牆前回填 Y = Df + D2', 'm'], ['n', '(15) 背填坡度 1V : nH', 'n'],
       ['Ks', '止滑榫寬度 Ks（繪圖用）', 'm']],
       hint: '選擇牆高 H 即帶入建議尺寸，之後仍可自行修改任一尺寸（修改後顯示「自訂」）。實際條件不同時請自行檢核調整。' },
     { t: '2. 材料參數', f: [
@@ -151,7 +151,7 @@
           else if (type === 'bool') ctl = `<select id="${id}" data-k="${k}" data-type="bool"><option value="1" ${P[k] ? 'selected' : ''}>是</option><option value="0" ${!P[k] ? 'selected' : ''}>否</option></select>`;
           else if (type === 'text') ctl = `<input id="${id}" data-k="${k}" data-type="text" value="${P[k] ?? ''}" style="text-align:left">`;
           else ctl = `<input id="${id}" data-k="${k}" ${type === 'opt' ? 'data-type="opt"' : ''} inputmode="decimal" value="${fmtIn(P[k])}">`;
-          box.insertAdjacentHTML('beforeend', `<div class="f${type === 'select' ? ' wide' : ''}"><label for="${id}">${lab}</label>${ctl}${type === 'select' ? '' : `<span class="u">${unit}</span>`}</div>`);
+          box.insertAdjacentHTML('beforeend', `<div class="f${type === 'select' ? ' wide' : ''}"><label for="${id}">${k.startsWith('=') && lab.includes(' = ') ? lab.replace(/ = (.*)$/, '<span class="rel">= $1</span>') : lab}</label>${ctl}${type === 'select' ? '' : `<span class="u">${unit}</span>`}</div>`);
         }
         if (g.info) box.insertAdjacentHTML('beforeend', `<div id="${g.info}"></div><p class="hint">載重係數與強度折減因子依所選配筋規範自動帶入，免輸入。</p>`);
       }
@@ -264,8 +264,15 @@
       ${eq('載重傾角 β = atan(ΣH/ΣV)', n(X.beta), '度')}
       ${eq("q = γ2·Df'（Df' = Y）", n(X.q), 'tf/m²')}
       ${eq('qu = c·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·γ1·B·Nγ·Frd·Fri', n(X.qu), 'tf/m²', true)}
-      ${eq('qt（趾端）', n(X.qt), 'tf/m²')}
-      ${eq('qh（踵端）' + (Math.abs(X.e) > o.g.B / 6 ? '　※ |e|>B/6 採三角形分布' : ''), n(X.qh), 'tf/m²')}
+      ${(() => {
+        const B = o.g.B, sv = n(X.SV), e = n(X.e, 3), b = n(B);
+        if (Math.abs(X.e) <= B / 6) return eq(`qt（趾端）= ΣV/B·(1 + 6e/B) = ${sv}/${b} × (1 + 6×${e}/${b})`, n(X.qt), 'tf/m²')
+          + eq(`qh（踵端）= ΣV/B·(1 − 6e/B) = ${sv}/${b} × (1 − 6×${e}/${b})`, n(X.qh), 'tf/m²');
+        if (X.e > 0) return eq(`qt（趾端）= 2ΣV / [3(B/2 − e)] = 2×${sv} / [3×(${b}/2 − ${e})]　※ e > B/6 採三角形分布`, n(X.qt), 'tf/m²')
+          + eq('qh（踵端）= 0（e > B/6，踵端與地盤分離）', n(X.qh), 'tf/m²');
+        return eq('qt（趾端）= 0（e < −B/6，趾端與地盤分離）', n(X.qt), 'tf/m²')
+          + eq(`qh（踵端）= 2ΣV / [3(B/2 + e)] = 2×${sv} / [3×(${b}/2 + ${e})]　※ |e| > B/6 採三角形分布`, n(X.qh), 'tf/m²');
+      })()}
       ${eq('FS = qu / max(qt, qh)', n(X.FSb), ok(X.okB, '≥ ' + n(X.fsb, 1)), true)}
       ${slideHead}
       <div class="sidefig"><div class="sf-main"><p class="note">設置剪力榫時，潛在滑動面為止滑榫前端之被動受剪區域。</p>
@@ -378,10 +385,10 @@
     <h2>2. 擋土牆設計尺寸及分析結果</h2>
     <h3>2.1 擋土牆設計尺寸</h3>
     <div class="dimrow"><div class="dimtab">    <div class="scroll"><table class="t"><tbody>
-      ${[['(1) 牆體全高 H', p.H], ['(2) 牆身頂寬 T', p.T], ['(3) 牆身高度 h', g.h], ['(4) 基礎寬度 B', g.B], ['(5) 基礎趾長 C', p.C],
-        ['(6) 牆身底寬 S', p.S], ['(7) 基礎踵長 E', p.E], ['(8) 基礎上高 D1', p.D1], ['(9) 基礎下高 D2', p.D2], ['(10) 牆背斜率 η', g.eta],
-        ['(11) 止滑榫尺寸 Kd', p.Kd], ['(12) 止滑榫位置 Kc', p.Kc], ['(13) 趾版覆土 Df', p.Df], ['(14) 牆前回填 Y', g.Y]]
-        .map(([a, b]) => `<tr><td>${a} (m)</td><td>${n(b)}</td></tr>`).join('')}
+      ${[['(1) 牆體全高 H', p.H], ['(2) 牆身頂寬 T', p.T], ['(3) 牆身高度 h = H − D1 − D2', g.h], ['(4) 基礎寬度 B = C + S + E', g.B], ['(5) 基礎趾長 C', p.C],
+        ['(6) 牆身底寬 S', p.S], ['(7) 基礎踵長 E', p.E], ['(8) 基礎上高 D1', p.D1], ['(9) 基礎下高 D2', p.D2], ['(10) 牆背斜率 η = (S − T)/h', g.eta],
+        ['(11) 止滑榫尺寸 Kd', p.Kd], ['(12) 止滑榫位置 Kc', p.Kc], ['(13) 趾版覆土 Df', p.Df], ['(14) 牆前回填 Y = Df + D2', g.Y]]
+        .map(([a, b]) => `<tr><td>${a}${a.includes('η') ? '' : ' (m)'}</td><td>${n(b, a.includes('η') ? 3 : 2)}</td></tr>`).join('')}
       <tr><td>(15) 背填坡度</td><td>1 : ${p.n}</td></tr></tbody></table></div></div>
     <div class="dimimg"><div class="dimmask" role="img" aria-label="擋土牆設計尺寸示意圖"></div><img class="dimprint" src="wall-dims-v2.png" alt=""></div></div>
     <h3>2.2 擋土牆配筋設計</h3>${barTable()}
