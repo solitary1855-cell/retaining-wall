@@ -39,7 +39,7 @@
     qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
     fc: 210, fy: 4200, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
-    cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', deltaP: 0, kpOvr: null, kpeOvr: null,
+    cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', kpem: 'mo', deltaP: 0, kpOvr: null, kpeOvr: null,
     preset: '', T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
@@ -224,7 +224,10 @@
     N.kpOvr = useOvr(p.kpOvr); Q.kpeOvr = useOvr(p.kpeOvr);
     N.ck = p.kpm === 'ck' ? ckKp(p.phiF, p.deltaP) : null;
     N.Kp = N.kpOvr ? +p.kpOvr : p.kpm === 'coulomb' ? coulombKp(p.phiF, p.deltaP, 0, 0) : p.kpm === 'ck' ? N.ck.Kp : tan(45 + p.phiF / 2) ** 2;
-    Q.Kp = Q.kpeOvr ? +p.kpeOvr : moKpe(p.phiF, Q.deltaP, 0, 0, Q.vphi);
+    // KPE：Mononobe-Okabe 式(7.3-14)（δ 同 Kp 方法）；或擬靜態 Rankine（式(7.3-14) 令 δ = θ = α = 0，kh = 0 時即 tan²(45+ϕ/2)）
+    if (p.kpem !== 'rankine') p.kpem = 'mo';
+    Q.deltaPE = p.kpem === 'rankine' ? 0 : Q.deltaP;
+    Q.Kp = Q.kpeOvr ? +p.kpeOvr : moKpe(p.phiF, Q.deltaPE, 0, 0, Q.vphi);
 
     for (const [X, sfx, elim] of [[N, 'n', 6], [Q, 'e', 3]]) stability(X, p, g, sfx, elim);
 

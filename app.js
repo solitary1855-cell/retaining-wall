@@ -115,6 +115,7 @@
       ['kaOvr', 'Ka 指定值（空白=計算）', '', 'opt'],
       ['kaeOvr', 'KAE 指定值（空白=計算）', '', 'opt'],
       ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb'], ['ck', 'Caquot-Kerisel']]],
+      ['kpem', 'KPE 計算方法', '', 'select', [['mo', 'Mononobe-Okabe'], ['rankine', 'Rankine（擬靜態）']]],
       ['deltaP', '被動牆面摩擦角 δp', '度'], ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt']],
       hint: 'Ka — Coulomb：式(7.3-5)，背填土 ϕ、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp 不宜大於 2ϕ/3。地震時 KPE 依式(7.3-14)，亦可指定。' },
     { t: '9. 擋土牆配筋設計', bars: true }
@@ -201,6 +202,8 @@
   const SQ = `<msqrt>${mT('cos²α−cos²ϕ')}</msqrt>`;
   const B_KAR = mT('cosα·') + mFrac(mT('cosα−') + SQ, mT('cosα+') + SQ);
   const FX_KAE = fx('AE', mFrac(mT('cos²(ϕ−θ−φ)'), mT('cosφ·cos²θ·cos(δ+φ+θ)') + mBox('+', 'sin(ϕ+δ)·sin(ϕ−φ−α)', 'cos(δ+φ+θ)·cos(θ−α)')), '式(7.3-12)');
+  const B_KPER = mFrac(mT('cos²(ϕ−φ)'), mT('cos²φ') + mBox('−', 'sinϕ·sin(ϕ−φ)', 'cosφ'));
+  const FX_KPER = fx('PE', B_KPER, '擬靜態 Rankine（式(7.3-14) 令 δ = θ = α = 0）');
   const FX_KPE = fx('PE', mFrac(mT('cos²(ϕ+θ−φ)'), mT('cosφ·cos²θ·cos(δ−θ+φ)') + mBox('−', 'sin(ϕ+δ)·sin(ϕ−φ+α)', 'cos(δ−θ+φ)·cos(α−θ)')), '式(7.3-14)');
 
   // ---------- drawings ----------
@@ -329,6 +332,7 @@
           `${pf}、δp = ${d1(p.deltaP)}、δ/ϕ = ${n(N.ck.rat, 3)}、R = ${n(N.ck.R, 3)}、KP(δ/ϕ=−1) = ${n(N.ck.Kp1, 3)}`]
       : ['Rankine', mK('P', mTan2('+')), pf];
     const kpe = Q.kpeOvr ? ['指定值', '—', '—']
+      : p.kpem === 'rankine' ? ['擬靜態 Rankine（式(7.3-14) 令 δ = θ = α = 0；kh = 0 時即 tan²(45° + ϕ/2)）', mK('PE', B_KPER), `${pf}、φ = ${n(Q.vphi)}°`]
       : ['Mononobe-Okabe，式(7.3-14)', mK('PE', B_KPE),
         `${pf}、δ = ${d1(Q.deltaP)}、θ = α = 0°（止滑榫前緣垂直、地表水平）、φ = ${n(Q.vphi)}°`];
     const row = (k, nm, r, v) => `<tr><td style="white-space:nowrap">${k}</td><td style="text-align:left;min-width:7em">${nm}</td><td style="text-align:left;min-width:9em">${r[0]}</td><td class="fxc" style="text-align:left">${r[1]}</td><td style="text-align:left">${r[2]}</td><td><b>${n(v, 3)}</b></td></tr>`;
@@ -347,7 +351,7 @@
       : 'Ka（Coulomb，式(7.3-5)）';
     const kaMeth = N.kaOvr ? '指定值' : p.kam === 'rankine' ? 'Rankine' : 'Coulomb';
     const inclLab = !N.kaOvr && p.kam === 'rankine' ? 'α' : 'δ+θ';
-    const kpeLab = Q.kpeOvr ? 'KPE（指定值）' : `KPE（第7.3.5節，θ = α = 0，δ = ${n(Q.deltaP, 1)}°，φ = ${n(Q.vphi)}°）`;
+    const kpeLab = Q.kpeOvr ? 'KPE（指定值）' : p.kpem === 'rankine' ? `KPE（擬靜態 Rankine，δ = θ = α = 0，φ = ${n(Q.vphi)}°）` : `KPE（第7.3.5節 Mononobe-Okabe，θ = α = 0，δ = ${n(Q.deltaPE, 1)}°，φ = ${n(Q.vphi)}°）`;
     let h = `<p class="note">${p.id || ''}　H = ${n(p.H)} m</p>
     <h2>1. 設計依據</h2>
     <h3>1.1 材料參數</h3>
@@ -434,7 +438,7 @@
     <p class="note">超載之動態增量作用點規範未另規定，比照 ΔPAE 之變位模式取用。</p>
     ${eq('PWE（含 Westergaard 動水壓，第7.3.6節）／ ywe', n(Q.Pwe) + ' / ' + n(Q.ywe), 'tf, m')}
     <h4>d. 作用力總表</h4><div class="sidefig"><div class="sf-main">${forceTable(o.items, Q.ext, 'e')}</div><div class="sf-fig">${RWDraw.blocks()}</div></div>
-    ${stabReport(Q, 4, 3, kpeLab, FX_KPE)}
+    ${stabReport(Q, 4, 3, kpeLab, Q.kpeOvr ? '' : P.kpem === 'rankine' ? FX_KPER : FX_KPE)}
 
     <h2>5. 配筋設計（USD）</h2>
     <h3>5.1 設計條件</h3>
