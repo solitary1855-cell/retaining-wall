@@ -225,9 +225,10 @@
     N.ck = p.kpm === 'ck' ? ckKp(p.phiF, p.deltaP) : null;
     N.Kp = N.kpOvr ? +p.kpOvr : p.kpm === 'coulomb' ? coulombKp(p.phiF, p.deltaP, 0, 0) : p.kpm === 'ck' ? N.ck.Kp : tan(45 + p.phiF / 2) ** 2;
     // KPE：Mononobe-Okabe 式(7.3-14)（δ 同 Kp 方法）；或擬靜態 Rankine（式(7.3-14) 令 δ = θ = α = 0，kh = 0 時即 tan²(45+ϕ/2)）
-    if (p.kpem !== 'rankine') p.kpem = 'mo';
-    Q.deltaPE = p.kpem === 'rankine' ? 0 : Q.deltaP;
-    Q.Kp = Q.kpeOvr ? +p.kpeOvr : moKpe(p.phiF, Q.deltaPE, 0, 0, Q.vphi);
+    // 或 Rankine（非擬靜態）：KPE = tan²(45+ϕ/2)，與常時 Rankine Kp 相同，不計地震對被動土壓之折減
+    if (!['rankine', 'rankine0'].includes(p.kpem)) p.kpem = 'mo';
+    Q.deltaPE = p.kpem === 'mo' ? Q.deltaP : 0;
+    Q.Kp = Q.kpeOvr ? +p.kpeOvr : p.kpem === 'rankine0' ? tan(45 + p.phiF / 2) ** 2 : moKpe(p.phiF, Q.deltaPE, 0, 0, Q.vphi);
 
     for (const [X, sfx, elim] of [[N, 'n', 6], [Q, 'e', 3]]) stability(X, p, g, sfx, elim);
 
