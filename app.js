@@ -260,7 +260,7 @@
     return `<h3>${no}.2 抗傾覆檢核</h3>
       ${eq('FS = Mr / Md = ' + n(X.Mr) + ' / ' + n(X.Md), n(X.FSo), ok(X.okO, '≥ ' + n(X.fso, 1)), true)}
       ${eq('e = B/2 − (Mr − Md)/ΣV', n(X.e), ok(X.okE, `B/${elim}=${n(o.g.B / elim)}`) , true)}
-      <h3>${no}.3 抗承載檢核（基礎規範 式4.3-1）</h3>
+      <h3>${no}.3 抗承載檢核（建築物基礎構造設計規範(112) 式(4.3-1)、表4.3-1、表4.3-2）</h3>
       <div class="scroll"><table class="t"><thead><tr><th></th><th>γ1 (tf/m³)</th><th>ϕ (度)</th><th>c (tf/m²)</th><th>Fcd</th><th>Fci</th><th>Fqd</th><th>Fqi</th><th>Frd</th><th>Fri</th></tr></thead>
       <tbody><tr><td>承載層</td><td>${n(X.g1)}</td><td>${n(P.phiF, 1)}</td><td>${n(P.cF)}</td><td>${n(X.Fcd)}</td><td>${n(X.Fci)}</td><td>${n(X.Fqd)}</td><td>${n(X.Fci)}</td><td>${n(X.Fqd)}</td><td>${n(X.Fri)}</td></tr></tbody></table></div>
       ${eq(`Nc = ${n(X.Nc, 1)}，Nq = ${n(X.Nq, 1)}，Nγ = ${n(X.Nr, 1)}（表4.3-1，ϕ = ${X.phiT}°）`, '', '')}
@@ -270,6 +270,7 @@
           ? eq(`q = γ2·Df' = γ·(Y − hw) + (γ − γw)·hw = ${n(P.gF)} × ${n(Y)} − ${n(P.gW)} × ${n(hw)}（Df' = Y = Df + D2，hw = min(Y, Hw2)）`, n(X.q), 'tf/m²')
           : eq(`q = γ2·Df' = ${n(P.gF)} × ${n(Y)}（Df' = Y = Df + D2）`, n(X.q), 'tf/m²'); })()}
       ${eq('qu = c·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·γ1·B·Nγ·Frd·Fri', n(X.qu), 'tf/m²', true)}
+      <p class="note">擋土牆為條形基礎（B/L ≈ 0），形狀影響因素 Fcs = Fqs = Fγs = 1.0（表4.3-2），式中省略。</p>
       ${(() => {
         const B = o.g.B, sv = n(X.SV), e = n(X.e, 3), b = n(B);
         if (Math.abs(X.e) <= B / 6) return eq(`qt（趾端）= ΣV/B·(1 + 6e/B) = ${sv}/${b} × (1 + 6×${e}/${b})`, n(X.qt), 'tf/m²')
@@ -388,6 +389,7 @@
       <tr><td>抗滑動</td><td>${n(p.fss_n, 1)}</td><td>${n(p.fss_e, 1)}</td></tr>
       <tr><td>抗傾覆</td><td>${n(p.fso_n, 1)}</td><td>${n(p.fso_e, 1)}</td></tr>
       <tr><td>抗承載</td><td>${n(p.fsb_n, 1)}</td><td>${n(p.fsb_e, 1)}</td></tr></tbody></table></div>
+    <p class="note">依建築物基礎構造設計規範(112) 第7.4.1節（滑動）、第7.4.2節（傾覆）、第7.4.3節（支承力）；公路橋梁設計規範 第6.2.8節。</p>
     <h3>1.7 保護層</h3>${eq("保護層厚度 d'", n(p.cover, 1), 'cm')}
     <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${kTable()}${p.kpm === 'ck' && !N.ck.inRange ? '<p class="note">※ 承載層 ϕ 超出圖-解7.3-1 表列範圍（10°～45°），以邊界值計算。</p>' : ''}${p.kpm !== 'rankine' && p.deltaP > 2 * p.phiF / 3 ? '<p class="note">※ δp 大於 2ϕ/3，第7.3.3節解說3規定設計採用之牆面摩擦角不宜大於 2ϕ/3。</p>' : ''}
 
@@ -439,8 +441,8 @@
     ${eq(`合力作用點（${o.mv.name}）` + ({ rotBase: '：H̄ = [PA·yA + ΔPAE·(2H/3)]/PAE　式(解7.3-5)', slide: '：H̄ = [PA(0.42H) + ΔPAE(0.48H)]/PAE　式(解7.3-7)', rotTop: '：H̄ = 0.55H' }[P.mvm] || ''), n(Q.yae), 'm', true)}
     ${P.mvm === 'rotBase' ? `<p class="note">yA = ${n(N.ya)} m 為靜態主動土壓力實際形心（無地下水時即 H/3）。</p>` : ''}
     ${eq('PQEh（超載）／ yqe', n(Q.Pqeh) + ' / ' + n(Q.yqe), 'tf, m')}
-    <p class="note">超載之動態增量作用點規範未另規定，比照 ΔPAE 之變位模式取用。</p>
-    ${eq('PWE（含 Westergaard 動水壓，第7.3.6節）／ ywe', n(Q.Pwe) + ' / ' + n(Q.ywe), 'tf, m')}
+    <p class="note">依第7.3.7節第1款，均布超載折算為等值填土高度計算側壓，故地震時超載以 KAE 計算，其動態增量作用點比照 ΔPAE 之變位模式取用。</p>
+    ${eq('PWE（含動水壓增量 ΔPWE = (7/12)·kh·γw·Hw1²，作用於 0.4Hw1，第7.3.6節解說3 式(解7.3-8)、(解7.3-9)）／ ywe', n(Q.Pwe) + ' / ' + n(Q.ywe), 'tf, m')}
     <h4>d. 作用力總表</h4><div class="sidefig"><div class="sf-main">${forceTable(o.items, Q.ext, 'e')}</div><div class="sf-fig">${RWDraw.blocks()}</div></div>
     ${stabReport(Q, 4, 3, kpeLab, Q.kpeOvr ? '' : P.kpem === 'rankine0' ? '' : P.kpem === 'rankine' ? FX_KPER : FX_KPE)}
 
