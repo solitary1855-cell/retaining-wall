@@ -35,7 +35,7 @@
     id: 'RW-1',
     // 預設條件比照「道路工程參考圖」R-008：背填土 γ=1.9、活載重相當 60cm 土重、Z=0.33、f'c=210、牆背設濾層洩水（不計水位）；
     // 承載層採緊密礫石級配（R-008 附註10：承載力不足時挖除以礫石級配回填）
-    gB: 1.9, phiB: 30, cB: 0, gF: 2.1, phiF: 38, cF: 0, gC: 2.4, gW: 1.0,
+    gB: 1.9, phiB: 30, cB: 0, gF: 2.1, phiF: 32, cF: 0, gC: 2.4, gW: 1.0,
     qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
     fc: 210, fy: 4200, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
