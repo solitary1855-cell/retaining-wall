@@ -37,7 +37,7 @@
     // 承載層採緊密礫石級配（R-008 附註10：承載力不足時挖除以礫石級配回填）
     gB: 1.9, phiB: 30, cB: 0, gF: 2.1, phiF: 38, cF: 0, gC: 2.4, gW: 1.0,
     qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
-    fc: 210, fy: 4200, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, mvm: 'rotBase',
+    fc: 210, fy: 4200, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
     cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', kpem: 'mo', deltaP: 0, kpOvr: null, kpeOvr: null,
     preset: '', T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
@@ -176,8 +176,8 @@
     const mv = o.mv = MVM[p.mvm] || MVM.rotBase;
     // 第7.3.4節解說3：kh 取地表水平向尖峰加速度之半（側向位移完全受限取1.5倍）；kv 取垂直向之半
     o.khS = (p.khRes ? 1.5 : 0.5) * p.pgaH; o.kvS = 0.5 * p.pgaV;
-    // 地震合成角 φ：依第7.3.4節解說3，遠距離地震可忽略垂直地震力，令 kv = 0（不引用輸入之 kv）
-    Q.kvPhi = 0;
+    // 地震合成角 φ：勾選 kvPhi0 時依第7.3.4節解說3（遠距離地震可忽略垂直地震力）令 kv = 0，否則採輸入之 kv
+    Q.kvPhi = p.kvPhi0 === false ? p.kv : 0;
     Q.vphi = D(Math.atan(p.kh / (1 - Q.kvPhi)));
     Q.crit = N.phi - Q.vphi - N.alpha; Q.okCrit = Q.crit >= 0;
     Q.delta = p.deltaRE * p.phiB;   // 地震時牆背摩擦角（獨立輸入）
