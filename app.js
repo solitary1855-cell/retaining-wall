@@ -115,7 +115,7 @@
       ['kaOvr', 'Ka 指定值（空白=計算）', '', 'opt'],
       ['kaeOvr', 'KAE 指定值（空白=計算）', '', 'opt'],
       ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb'], ['ck', 'Caquot-Kerisel']]],
-      ['kpem', 'KPE 計算方法', '', 'select', [['mo', 'Mononobe-Okabe'], ['rankine', 'Rankine（擬靜態）'], ['rankine0', 'Rankine（非擬靜態）']]],
+      ['kpem', 'KPE 計算方法', '', 'select', [['mo', 'Mononobe-Okabe'], ['rankine', 'Rankine（擬靜態）'], ['rankine0', 'Rankine']]],
       ['deltaP', '被動牆面摩擦角 δp', '度'], ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt']],
       hint: 'Ka — Coulomb：式(7.3-5)，背填土 ϕ、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp 不宜大於 2ϕ/3。地震時 KPE 依式(7.3-14)，亦可指定。' },
     { t: '9. 擋土牆配筋設計', bars: true }
@@ -332,7 +332,7 @@
           `${pf}、δp = ${d1(p.deltaP)}、δ/ϕ = ${n(N.ck.rat, 3)}、R = ${n(N.ck.R, 3)}、KP(δ/ϕ=−1) = ${n(N.ck.Kp1, 3)}`]
       : ['Rankine', mK('P', mTan2('+')), pf];
     const kpe = Q.kpeOvr ? ['指定值', '—', '—']
-      : p.kpem === 'rankine0' ? ['Rankine（非擬靜態；同常時 Rankine KP，不計地震對被動土壓之折減）', mK('PE', mTan2('+')), pf]
+      : p.kpem === 'rankine0' ? ['Rankine（同常時 Rankine KP，不計地震對被動土壓之折減）', mK('PE', mTan2('+')), pf]
       : p.kpem === 'rankine' ? ['擬靜態 Rankine（式(7.3-14) 令 δ = θ = α = 0；kh = 0 時即 tan²(45° + ϕ/2)）', mK('PE', B_KPER), `${pf}、φ = ${n(Q.vphi)}°`]
       : ['Mononobe-Okabe，式(7.3-14)', mK('PE', B_KPE),
         `${pf}、δ = ${d1(Q.deltaP)}、θ = α = 0°（止滑榫前緣垂直、地表水平）、φ = ${n(Q.vphi)}°`];
@@ -352,7 +352,7 @@
       : 'Ka（Coulomb，式(7.3-5)）';
     const kaMeth = N.kaOvr ? '指定值' : p.kam === 'rankine' ? 'Rankine' : 'Coulomb';
     const inclLab = !N.kaOvr && p.kam === 'rankine' ? 'α' : 'δ+θ';
-    const kpeLab = Q.kpeOvr ? 'KPE（指定值）' : p.kpem === 'rankine0' ? 'KPE = tan²(45 + ϕ/2)（Rankine，非擬靜態）' : p.kpem === 'rankine' ? `KPE（擬靜態 Rankine，δ = θ = α = 0，φ = ${n(Q.vphi)}°）` : `KPE（第7.3.5節 Mononobe-Okabe，θ = α = 0，δ = ${n(Q.deltaPE, 1)}°，φ = ${n(Q.vphi)}°）`;
+    const kpeLab = Q.kpeOvr ? 'KPE（指定值）' : p.kpem === 'rankine0' ? 'KPE = tan²(45 + ϕ/2)（Rankine）' : p.kpem === 'rankine' ? `KPE（擬靜態 Rankine，δ = θ = α = 0，φ = ${n(Q.vphi)}°）` : `KPE（第7.3.5節 Mononobe-Okabe，θ = α = 0，δ = ${n(Q.deltaPE, 1)}°，φ = ${n(Q.vphi)}°）`;
     let h = `<p class="note">${p.id || ''}　H = ${n(p.H)} m</p>
     <h2>1. 設計依據</h2>
     <h3>1.1 材料參數</h3>
