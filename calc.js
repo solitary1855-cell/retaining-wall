@@ -108,7 +108,7 @@
     o.cf = cf;
     // geometry
     const g = o.g = {};
-    g.h = p.H - p.D1 - p.D2; g.B = p.C + p.S + p.E; g.eta = (p.S - p.T) / g.h; g.Y = p.Df + p.D2;
+    g.h = p.H - p.D1 - p.D2; g.B = p.C + p.S + p.E; g.eta = (p.S - p.T) / g.h; g.Y = p.Df + p.D1 + p.D2;   // 牆前回填高度（自基底），Df 為牆身前緣處趾版頂面以上覆土
     g.Ws = g.B - p.C - p.T;
     const B = g.B, h = g.h;
     o.hw1 = p.hw1r * p.H;
@@ -154,7 +154,7 @@
       ['(9) 背填坡填土', 0.5 * g.Ws ** 2 * ta * gB, C + T + 2 * g.Ws / 3, p.H + g.Ws * ta / 3],
       ['(10) 牆背斜面上填土', 0.5 * (S - T) * h * gB, C + T + 2 * (S - T) / 3, D1 + D2 + 2 * h / 3],
       ['(11) 踵版斜坡上填土', 0.5 * E * D1 * gB, C + S + 2 * E / 3, D2 + 2 * D1 / 3],
-      ['(12) 趾版上覆土', C * (p.Df - D1 / 2) * p.gF, C / 2, D2 + p.Df / 2],
+      ['(12) 趾版上覆土', C * (p.Df + D1 / 2) * p.gF, C / 2, (g.Y + D2 + D1 / 2) / 2],
       ['(13) 牆前積水', p.gW * Math.max(0, g.h2 - g.Y) * C, C / 2, g.Y + Math.max(0, g.h2 - g.Y) / 2]
     ].map(([name, W, x, y]) => ({ name, W, x, y }));
     o.SW = o.items.reduce((a, b) => a + b.W, 0);

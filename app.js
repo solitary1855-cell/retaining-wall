@@ -82,7 +82,7 @@
       ['=B', '(4) 基礎寬度 B = C + S + E', 'm'], ['C', '(5) 基礎趾長 C', 'm'], ['S', '(6) 牆身底寬 S', 'm'],
       ['E', '(7) 基礎踵長 E', 'm'], ['D1', '(8) 基礎上高 D1', 'm'], ['D2', '(9) 基礎下高 D2', 'm'],
       ['=eta', '(10) 牆背斜率 η = (S − T)/h', ''], ['Kd', '(11) 止滑榫尺寸 Kd', 'm'], ['Kc', '(12) 止滑榫位置 Kc', 'm'],
-      ['Df', '(13) 趾版覆土 Df', 'm'], ['=Y', '(14) 牆前回填 Y = Df + D2', 'm'], ['n', '(15) 背填坡度 1V : nH', 'n'],
+      ['Df', '(13) 趾版覆土 Df', 'm'], ['=Y', '(14) 牆前回填 Y = Df + D1 + D2', 'm'], ['n', '(15) 背填坡度 1V : nH', 'n'],
       ['Ks', '止滑榫寬度 Ks（繪圖用）', 'm']],
       hint: '選擇牆高 H 即帶入建議尺寸，之後仍可自行修改任一尺寸（修改後顯示「自訂」）。實際條件不同時請自行檢核調整。' },
     { t: '2. 土壤參數', f: [
@@ -267,8 +267,8 @@
       ${eq('載重傾角 β = atan(ΣH/ΣV)', n(X.beta), '度')}
       ${(() => { const Y = o.g.Y, hw = Math.min(Y, o.g.h2);
         return hw > 0
-          ? eq(`q = γ2·Df' = γ·(Y − hw) + (γ − γw)·hw = ${n(P.gF)} × ${n(Y)} − ${n(P.gW)} × ${n(hw)}（Df' = Y = Df + D2 = ${n(P.Df)} + ${n(P.D2)} = ${n(Y)} m，hw = min(Y, Hw2) = ${n(hw)} m）`, n(X.q), 'tf/m²')
-          : eq(`q = γ2·Df' = ${n(P.gF)} × ${n(Y)}（Df' = Y = Df + D2 = ${n(P.Df)} + ${n(P.D2)} = ${n(Y)} m）`, n(X.q), 'tf/m²'); })()}
+          ? eq(`q = γ2·Df' = γ·(Y − hw) + (γ − γw)·hw = ${n(P.gF)} × ${n(Y)} − ${n(P.gW)} × ${n(hw)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m，hw = min(Y, Hw2) = ${n(hw)} m）`, n(X.q), 'tf/m²')
+          : eq(`q = γ2·Df' = ${n(P.gF)} × ${n(Y)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m）`, n(X.q), 'tf/m²'); })()}
       ${(() => { const f = v => n(v, 3), t1 = P.cF * X.Nc * X.Fcd * X.Fci, t2 = X.q * X.Nq * X.Fqd * X.Fci, t3 = 0.5 * X.g1 * o.g.B * X.Nr * X.Fqd * X.Fri;
         return eq(`qu = c·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·γ1·B·Nγ·Fγd·Fγi<br>　= ${n(P.cF)} × ${n(X.Nc, 1)} × ${f(X.Fcd)} × ${f(X.Fci)} + ${n(X.q)} × ${n(X.Nq, 1)} × ${f(X.Fqd)} × ${f(X.Fci)} + 0.5 × ${n(X.g1)} × ${n(o.g.B)} × ${n(X.Nr, 1)} × ${f(X.Fqd)} × ${f(X.Fri)}<br>　= ${n(t1)} + ${n(t2)} + ${n(t3)}`, n(X.qu), 'tf/m²', true); })()}
       <p class="note">擋土牆為條形基礎（B/L ≈ 0），形狀影響因素 Fcs = Fqs = Fγs = 1.0（表4.3-2），式中省略。</p>
@@ -399,7 +399,7 @@
     <div class="dimrow"><div class="dimtab">    <div class="scroll"><table class="t"><tbody>
       ${[['(1) 牆體全高 H', p.H], ['(2) 牆身頂寬 T', p.T], ['(3) 牆身高度 h = H − D1 − D2', g.h], ['(4) 基礎寬度 B = C + S + E', g.B], ['(5) 基礎趾長 C', p.C],
         ['(6) 牆身底寬 S', p.S], ['(7) 基礎踵長 E', p.E], ['(8) 基礎上高 D1', p.D1], ['(9) 基礎下高 D2', p.D2], ['(10) 牆背斜率 η = (S − T)/h', g.eta],
-        ['(11) 止滑榫尺寸 Kd', p.Kd], ['(12) 止滑榫位置 Kc', p.Kc], ['(13) 趾版覆土 Df', p.Df], ['(14) 牆前回填 Y = Df + D2', g.Y]]
+        ['(11) 止滑榫尺寸 Kd', p.Kd], ['(12) 止滑榫位置 Kc', p.Kc], ['(13) 趾版覆土 Df', p.Df], ['(14) 牆前回填 Y = Df + D1 + D2', g.Y]]
         .map(([a, b]) => `<tr><td>${a}${a.includes('η') ? '' : ' (m)'}</td><td>${n(b, a.includes('η') ? 3 : 2)}</td></tr>`).join('')}
       <tr><td>(15) 背填坡度</td><td>1 : ${p.n}</td></tr></tbody></table></div></div>
     <div class="dimimg"><div class="dimmask" role="img" aria-label="擋土牆設計尺寸示意圖"></div><img class="dimprint" src="wall-dims-v2.png" alt=""></div></div>
