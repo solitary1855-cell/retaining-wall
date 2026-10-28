@@ -288,17 +288,10 @@
       ${eq(kp, n(X.Kp, 3), '', true)}
       ${eq('止滑榫位置 Kc ／ 尺寸 Kd', n(P.Kc) + ' / ' + n(P.Kd), 'm')}
       ${eq('趾地覆土深度 D = Y + Kd', n(o.g.Y + P.Kd), 'm')}
-      ${(() => { const Y = o.g.Y, zw = X.zw, Kd = P.Kd;
-        const top = zw >= Y ? `γ2·Y = ${n(P.gB)} × ${n(Y)}` : `γ2·zw + γ2′·(Y − zw) = ${n(P.gB)} × ${n(zw)} + ${n(o.g.g2s)} × ${n(Y - zw)}`;
-        const bot = zw >= Y + Kd ? `σ′v,上 + γ1·Kd = ${n(X.svTop)} + ${n(P.gF)} × ${n(Kd)}` : zw <= Y ? `σ′v,上 + γ1′·Kd = ${n(X.svTop)} + ${n(o.g.g1s)} × ${n(Kd)}`
-          : `σ′v,上 + γ1·(zw − Y) + γ1′·(Y + Kd − zw) = ${n(X.svTop)} + ${n(P.gF)} × ${n(zw - Y)} + ${n(o.g.g1s)} × ${n(Y + Kd - zw)}`;
-        return eq(`止滑榫頂（基底）有效垂直應力 σ′v,上 = ${top}`, n(X.svTop), 'tf/m²')
-          + eq(`止滑榫底有效垂直應力 σ′v,下 = ${bot}`, n(X.svBot), 'tf/m²')
-          + (zw > Y && zw < Y + Kd
-            ? (() => { const sw = X.svTop + P.gF * (zw - Y); return eq(`水位處有效垂直應力 σ′v,w = σ′v,上 + γ1·(zw − Y) = ${n(X.svTop)} + ${n(P.gF)} × ${n(zw - Y)}`, n(sw), 'tf/m²')
-              + eq(`Pp = Kp·[(σ′v,上 + σ′v,w)/2·(zw − Y) + (σ′v,w + σ′v,下)/2·(Y + Kd − zw)] = ${n(X.Kp, 3)} × [(${n(X.svTop)} + ${n(sw)})/2 × ${n(zw - Y)} + (${n(sw)} + ${n(X.svBot)})/2 × ${n(Y + Kd - zw)}]`, n(X.Pp), 'tf'); })()
-            : eq(`Pp = Kp·(σ′v,上 + σ′v,下)/2·Kd = ${n(X.Kp, 3)} × (${n(X.svTop)} + ${n(X.svBot)})/2 × ${n(Kd)}`, n(X.Pp), 'tf'))
-          + '<p class="note">基礎版底面以上覆土採回填土 γ2，止滑榫範圍（基底以下）採承載層 γ1；地下水位以下分別採 γ2′、γ1′。</p>'; })()}
+      ${(() => { const Y = o.g.Y, zw = X.zw, Kd = P.Kd, dry = zw >= Y + Kd;
+        return eq(dry ? '被動區單位重 γp = γ1（承載層）' : '被動區等效單位重 γp（承載層 γ1，水位以下 γ1′，依水位分段計算有效應力）', n(X.gp), 'tf/m³')
+          + eq(`止滑榫平均有效垂直應力 σ′v,avg = γp·(Y + Kd/2) = ${n(X.gp)} × (${n(Y)} + ${n(Kd)}/2)`, n(X.svAvg), 'tf/m²')
+          + eq(`Pp = σ′v,avg·Kp·Kd = ${n(X.svAvg)} × ${n(X.Kp, 3)} × ${n(Kd)}`, n(X.Pp), 'tf'); })()}
       ${eq("L' = B − 2|e|", n(X.Lp), 'm')}
       ${eq('L1 = min(Kc, Kd/tan(45−ϕ1/2))', n(X.L1), 'm')}
       ${eq("V1 = L1/L'·ΣV", n(X.V1), 'tf')}

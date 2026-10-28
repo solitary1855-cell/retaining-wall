@@ -352,13 +352,14 @@
     else { X.qt = 0; X.qh = 2 * X.SV / (3 * (B / 2 + X.e)); }
     X.qmax = Math.max(X.qt, X.qh);
     X.FSb = X.qu / X.qmax; X.okB = X.FSb >= X.fsb;
-    // 被動土壓：止滑榫範圍（趾地面下 Y～Y+Kd）之有效垂直應力 σ'v
-    // 基礎版底面以上（0～Y）為回填土 γ2，以下（止滑榫範圍）為承載層 γ1；水位以下扣 γw
+    // 被動土壓：止滑榫範圍（趾地面下 Y～Y+Kd）平均有效垂直應力，全深度採承載層 γ1（水位以下 γ1′）
+    // σ'v = γ1·z − γw·max(0, z − zw)，以等效單位重 γp 表示：σ'v,avg = γp·(Y + Kd/2)
     const zw = g.dw === Infinity ? Infinity : Math.max(0, g.Y - (g.h2 > 0 ? g.h2 : -g.dw)), z1 = g.Y, z2 = g.Y + p.Kd;
-    const sv = z => { const a = Math.min(z, z1), b = Math.max(0, z - z1); return p.gB * a + p.gF * b - p.gW * Math.max(0, z - zw); };
-    const NI = 400; let I = 0; for (let i = 0; i < NI; i++) I += sv(z1 + (i + .5) * p.Kd / NI) * p.Kd / NI;
-    X.svTop = sv(z1); X.svBot = sv(z2); X.zw = zw;
-    X.Pp = X.Kp * I;
+    const sq = z => Math.max(0, z - zw) ** 2;
+    const I = p.gF * (z2 * z2 - z1 * z1) / 2 - p.gW * (sq(z2) - sq(z1)) / 2;
+    X.gp = p.Kd > 0 ? I / ((g.Y + p.Kd / 2) * p.Kd) : p.gF;   // 等效單位重
+    X.svAvg = X.gp * (g.Y + p.Kd / 2); X.zw = zw;
+    X.Pp = X.svAvg * X.Kp * p.Kd;
     X.Lp = B - 2 * Math.abs(X.e);
     X.L1 = Math.min(p.Kc, p.Kd / tan(45 - p.phiF / 2), X.Lp);
     X.V1 = X.Lp <= 0 ? 0 : X.L1 / X.Lp * X.SV; X.V2 = X.SV - X.V1;
