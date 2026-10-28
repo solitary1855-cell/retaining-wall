@@ -288,9 +288,8 @@
       ${eq(kp, n(X.Kp, 3), '', true)}
       ${eq('止滑榫位置 Kc ／ 尺寸 Kd', n(P.Kc) + ' / ' + n(P.Kd), 'm')}
       ${eq('趾地覆土深度 D = Y + Kd', n(o.g.Y + P.Kd), 'm')}
-      ${(() => { const Y = o.g.Y, zw = X.zw, Kd = P.Kd, dry = zw >= Y + Kd;
-        return eq(dry ? '被動區單位重 γp = γ1（承載層）' : '被動區等效單位重 γp（承載層 γ1，水位以下 γ1′，依水位分段計算有效應力）', n(X.gp), 'tf/m³')
-          + eq(`止滑榫平均有效垂直應力 σ′v,avg = γp·(Y + Kd/2) = ${n(X.gp)} × (${n(Y)} + ${n(Kd)}/2)`, n(X.svAvg), 'tf/m²')
+      ${(() => { const Y = o.g.Y, Kd = P.Kd, gs = X.ppWet ? 'γ1′' : 'γ1';
+        return eq(`止滑榫平均有效垂直應力 σ′v,avg = ${gs}·(Y + Kd/2) = ${n(X.gp)} × (${n(Y)} + ${n(Kd)}/2)` + (X.ppWet ? '（地下水位高於止滑榫底，採 γ1′ = γ1 − γw）' : ''), n(X.svAvg), 'tf/m²')
           + eq(`Pp = σ′v,avg·Kp·Kd = ${n(X.svAvg)} × ${n(X.Kp, 3)} × ${n(Kd)}`, n(X.Pp), 'tf'); })()}
       ${eq("L' = B − 2|e|", n(X.Lp), 'm')}
       ${eq('L1 = min(Kc, Kd/tan(45−ϕ1/2))', n(X.L1), 'm')}
