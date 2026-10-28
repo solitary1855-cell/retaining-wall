@@ -267,9 +267,10 @@
       ${eq('載重傾角 β = atan(ΣH/ΣV)', n(X.beta), '度')}
       ${(() => { const Y = o.g.Y, hw = Math.min(Y, o.g.h2);
         return hw > 0
-          ? eq(`q = γ2·Df' = γ·(Y − hw) + (γ − γw)·hw = ${n(P.gF)} × ${n(Y)} − ${n(P.gW)} × ${n(hw)}（Df' = Y = Df + D2，hw = min(Y, Hw2)）`, n(X.q), 'tf/m²')
-          : eq(`q = γ2·Df' = ${n(P.gF)} × ${n(Y)}（Df' = Y = Df + D2）`, n(X.q), 'tf/m²'); })()}
-      ${eq('qu = c·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·γ1·B·Nγ·Frd·Fri', n(X.qu), 'tf/m²', true)}
+          ? eq(`q = γ2·Df' = γ·(Y − hw) + (γ − γw)·hw = ${n(P.gF)} × ${n(Y)} − ${n(P.gW)} × ${n(hw)}（Df' = Y = Df + D2 = ${n(P.Df)} + ${n(P.D2)} = ${n(Y)} m，hw = min(Y, Hw2) = ${n(hw)} m）`, n(X.q), 'tf/m²')
+          : eq(`q = γ2·Df' = ${n(P.gF)} × ${n(Y)}（Df' = Y = Df + D2 = ${n(P.Df)} + ${n(P.D2)} = ${n(Y)} m）`, n(X.q), 'tf/m²'); })()}
+      ${(() => { const f = v => n(v, 3), t1 = P.cF * X.Nc * X.Fcd * X.Fci, t2 = X.q * X.Nq * X.Fqd * X.Fci, t3 = 0.5 * X.g1 * o.g.B * X.Nr * X.Fqd * X.Fri;
+        return eq(`qu = c·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·γ1·B·Nγ·Fγd·Fγi<br>　= ${n(P.cF)} × ${n(X.Nc, 1)} × ${f(X.Fcd)} × ${f(X.Fci)} + ${n(X.q)} × ${n(X.Nq, 1)} × ${f(X.Fqd)} × ${f(X.Fci)} + 0.5 × ${n(X.g1)} × ${n(o.g.B)} × ${n(X.Nr, 1)} × ${f(X.Fqd)} × ${f(X.Fri)}<br>　= ${n(t1)} + ${n(t2)} + ${n(t3)}`, n(X.qu), 'tf/m²', true); })()}
       <p class="note">擋土牆為條形基礎（B/L ≈ 0），形狀影響因素 Fcs = Fqs = Fγs = 1.0（表4.3-2），式中省略。</p>
       ${(() => {
         const B = o.g.B, sv = n(X.SV), e = n(X.e, 3), b = n(B);
