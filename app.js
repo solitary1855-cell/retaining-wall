@@ -265,7 +265,10 @@
       <tbody><tr><td>承載層</td><td>${n(X.g1)}</td><td>${n(P.phiF, 1)}</td><td>${n(P.cF)}</td><td>${n(X.Fcd)}</td><td>${n(X.Fci)}</td><td>${n(X.Fqd)}</td><td>${n(X.Fci)}</td><td>${n(X.Fqd)}</td><td>${n(X.Fri)}</td></tr></tbody></table></div>
       ${eq(`Nc = ${n(X.Nc, 1)}，Nq = ${n(X.Nq, 1)}，Nγ = ${n(X.Nr, 1)}（表4.3-1，ϕ = ${X.phiT}°）`, '', '')}
       ${eq('載重傾角 β = atan(ΣH/ΣV)', n(X.beta), '度')}
-      ${eq("q = γ2·Df'（Df' = Y）", n(X.q), 'tf/m²')}
+      ${(() => { const Y = o.g.Y, hw = Math.min(Y, o.g.h2);
+        return hw > 0
+          ? eq(`q = γ2·Df' = γ·(Y − hw) + (γ − γw)·hw = ${n(P.gF)} × ${n(Y)} − ${n(P.gW)} × ${n(hw)}（Df' = Y = Df + D2，hw = min(Y, Hw2)）`, n(X.q), 'tf/m²')
+          : eq(`q = γ2·Df' = ${n(P.gF)} × ${n(Y)}（Df' = Y = Df + D2）`, n(X.q), 'tf/m²'); })()}
       ${eq('qu = c·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·γ1·B·Nγ·Frd·Fri', n(X.qu), 'tf/m²', true)}
       ${(() => {
         const B = o.g.B, sv = n(X.SV), e = n(X.e, 3), b = n(B);
