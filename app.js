@@ -93,8 +93,8 @@
       ['qs', '牆背地表超載 qs', 'tf/m²'],
       ['qsType', '超載性質（配筋載重組合）', '', 'select', [['L', '活載重 L'], ['D', '永久載重（歸 D、H）']]],
       ['hw1r', '牆背水位比 Hw1/H', ''], ['=hw1', '牆背水位 Hw1', 'm'],
-      ['hw2', '牆前水位 Hw2（自基底）', 'm', 'opt'], ['=g1', '基底下平均單位重 γ′', 'tf/m³']],
-      hint: 'Hw2 空白＝無地下水；正值＝基底以上水深；負值＝水位位於基底以下之深度。γ′ 為基礎規範(112) 式(4.3-1) 第三項所用之基底下 B 深度範圍內平均單位重（水位以下採有效單位重 γ1 − γw，無地下水時 γ′ = γ1），自動計算。' },
+      ['hw2', '牆前水位 Hw2（自基底）', 'm', 'opt'], ['=g1', '基底下 B 範圍平均單位重', 'tf/m³']],
+      hint: 'Hw2 空白＝無地下水；正值＝基底以上水深；負值＝水位位於基底以下之深度。基礎版底面以上土壤採回填土參數（γ2、ϕ2、c2），以下採承載層參數（γ1、ϕ1、c1）；水位以下採浸水單位重 γ2′ = γ2 − γw、γ1′ = γ1 − γw。基底下 B 範圍平均單位重供式(4.3-1) 第三項使用，自動計算。' },
     { t: '4. 載重組合（含配筋規範與強度折減因子）', info: 'combo', f: [
       ['code', '配筋規範', '', 'select', [['hw', '公路橋梁設計規範'], ['c112', '112年建築物基礎構造設計規範']]]],
       hint: '係數依所選規範自動帶入。公路橋梁設計規範：第3.23節表3.3。112年建築物基礎構造設計規範：第2.11節規定基礎構材以極限強度法設計時依「建築構造編」辦理，載重組合依112年建築物混凝土結構設計規範表5.3.1及第5.3.6、5.3.7節。組合內容見下表。' },
@@ -254,6 +254,7 @@
     h += `<tr class="sum"><td>Σ</td><td>${n(X.SV)}</td><td>${n(X.SH)}</td><td></td><td></td><td>${n(X.Mr)}</td><td>${n(X.Md)}</td></tr></tbody></table></div>`;
     return h;
   }
+  const g1sym = () => ({ dry: 'γ1', sub: 'γ1′', mix: 'γ1m' })[o.g.g1mode];
   function stabReport(X, no, elim, kp, kfx = '') {
     const slideHead = `<h3>${no}.4 抗滑動檢核（設止滑榫）</h3>${kfx}`;
     const ok = (b, s) => `${s}　${b ? 'OK!' : 'NG!'}`;
@@ -261,16 +262,16 @@
       ${eq('FS = Mr / Md = ' + n(X.Mr) + ' / ' + n(X.Md), n(X.FSo), ok(X.okO, '≥ ' + n(X.fso, 1)), true)}
       ${eq('e = B/2 − (Mr − Md)/ΣV', n(X.e), ok(X.okE, `B/${elim}=${n(o.g.B / elim)}`) , true)}
       <h3>${no}.3 抗承載檢核（建築物基礎構造設計規範(112) 式(4.3-1)、表4.3-1、表4.3-2）</h3>
-      <div class="scroll"><table class="t"><thead><tr><th></th><th>γ′ (tf/m³)</th><th>ϕ1 (度)</th><th>c1 (tf/m²)</th><th>Fcd</th><th>Fci</th><th>Fqd</th><th>Fqi</th><th>Frd</th><th>Fri</th></tr></thead>
+      <div class="scroll"><table class="t"><thead><tr><th></th><th>${g1sym()} (tf/m³)</th><th>ϕ1 (度)</th><th>c1 (tf/m²)</th><th>Fcd</th><th>Fci</th><th>Fqd</th><th>Fqi</th><th>Frd</th><th>Fri</th></tr></thead>
       <tbody><tr><td>承載層</td><td>${n(X.g1)}</td><td>${n(P.phiF, 1)}</td><td>${n(P.cF)}</td><td>${n(X.Fcd)}</td><td>${n(X.Fci)}</td><td>${n(X.Fqd)}</td><td>${n(X.Fci)}</td><td>${n(X.Fqd)}</td><td>${n(X.Fri)}</td></tr></tbody></table></div>
       ${eq(`Nc = ${n(X.Nc, 1)}，Nq = ${n(X.Nq, 1)}，Nγ = ${n(X.Nr, 1)}（表4.3-1，ϕ1 = ${X.phiT}°）`, '', '')}
       ${eq('載重傾角 β = atan(ΣH/ΣV)', n(X.beta), '度')}
       ${(() => { const Y = o.g.Y, hw = Math.min(Y, o.g.h2);
         return hw > 0
-          ? eq(`q = γ1·(Y − hw) + (γ1 − γw)·hw = ${n(P.gF)} × ${n(Y)} − ${n(P.gW)} × ${n(hw)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m，hw = min(Y, Hw2) = ${n(hw)} m）`, n(X.q), 'tf/m²')
-          : eq(`q = γ1·Df' = ${n(P.gF)} × ${n(Y)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m）`, n(X.q), 'tf/m²'); })()}
+          ? eq(`q = γ2·(Y − hw) + γ2′·hw = ${n(P.gB)} × ${n(Y - hw)} + ${n(o.g.g2s)} × ${n(hw)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m，hw = min(Y, Hw2) = ${n(hw)} m）`, n(X.q), 'tf/m²')
+          : eq(`q = γ2·Df' = ${n(P.gB)} × ${n(Y)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m）`, n(X.q), 'tf/m²'); })()}
       ${(() => { const f = v => n(v, 3), t1 = P.cF * X.Nc * X.Fcd * X.Fci, t2 = X.q * X.Nq * X.Fqd * X.Fci, t3 = 0.5 * X.g1 * o.g.B * X.Nr * X.Fqd * X.Fri;
-        return eq(`qu = c1·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·γ′·B·Nγ·Fγd·Fγi<br>　= ${n(P.cF)} × ${n(X.Nc, 1)} × ${f(X.Fcd)} × ${f(X.Fci)} + ${n(X.q)} × ${n(X.Nq, 1)} × ${f(X.Fqd)} × ${f(X.Fci)} + 0.5 × ${n(X.g1)} × ${n(o.g.B)} × ${n(X.Nr, 1)} × ${f(X.Fqd)} × ${f(X.Fri)}<br>　= ${n(t1)} + ${n(t2)} + ${n(t3)}`, n(X.qu), 'tf/m²', true); })()}
+        return eq(`qu = c1·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·${g1sym()}·B·Nγ·Fγd·Fγi<br>　= ${n(P.cF)} × ${n(X.Nc, 1)} × ${f(X.Fcd)} × ${f(X.Fci)} + ${n(X.q)} × ${n(X.Nq, 1)} × ${f(X.Fqd)} × ${f(X.Fci)} + 0.5 × ${n(X.g1)} × ${n(o.g.B)} × ${n(X.Nr, 1)} × ${f(X.Fqd)} × ${f(X.Fri)}<br>　= ${n(t1)} + ${n(t2)} + ${n(t3)}`, n(X.qu), 'tf/m²', true); })()}
       <p class="note">擋土牆為條形基礎（B/L ≈ 0），形狀影響因素 Fcs = Fqs = Fγs = 1.0（表4.3-2），式中省略。</p>
       ${(() => {
         const B = o.g.B, sv = n(X.SV), e = n(X.e, 3), b = n(B);
@@ -287,8 +288,17 @@
       ${eq(kp, n(X.Kp, 3), '', true)}
       ${eq('止滑榫位置 Kc ／ 尺寸 Kd', n(P.Kc) + ' / ' + n(P.Kd), 'm')}
       ${eq('趾地覆土深度 D = Y + Kd', n(o.g.Y + P.Kd), 'm')}
-      ${eq(o.hw2 === null || o.g.Y + P.Kd <= o.g.Y - o.hw2 ? '被動區單位重 γp' : '被動區等效單位重 γp（依水位分段計算有效應力）', n(X.gp), 'tf/m³')}
-      ${eq('Pp = γp(Y + Kd/2)·Kp·Kd', n(X.Pp), 'tf')}
+      ${(() => { const Y = o.g.Y, zw = X.zw, Kd = P.Kd;
+        const top = zw >= Y ? `γ2·Y = ${n(P.gB)} × ${n(Y)}` : `γ2·zw + γ2′·(Y − zw) = ${n(P.gB)} × ${n(zw)} + ${n(o.g.g2s)} × ${n(Y - zw)}`;
+        const bot = zw >= Y + Kd ? `σ′v,上 + γ1·Kd = ${n(X.svTop)} + ${n(P.gF)} × ${n(Kd)}` : zw <= Y ? `σ′v,上 + γ1′·Kd = ${n(X.svTop)} + ${n(o.g.g1s)} × ${n(Kd)}`
+          : `σ′v,上 + γ1·(zw − Y) + γ1′·(Y + Kd − zw) = ${n(X.svTop)} + ${n(P.gF)} × ${n(zw - Y)} + ${n(o.g.g1s)} × ${n(Y + Kd - zw)}`;
+        return eq(`止滑榫頂（基底）有效垂直應力 σ′v,上 = ${top}`, n(X.svTop), 'tf/m²')
+          + eq(`止滑榫底有效垂直應力 σ′v,下 = ${bot}`, n(X.svBot), 'tf/m²')
+          + (zw > Y && zw < Y + Kd
+            ? (() => { const sw = X.svTop + P.gF * (zw - Y); return eq(`水位處有效垂直應力 σ′v,w = σ′v,上 + γ1·(zw − Y) = ${n(X.svTop)} + ${n(P.gF)} × ${n(zw - Y)}`, n(sw), 'tf/m²')
+              + eq(`Pp = Kp·[(σ′v,上 + σ′v,w)/2·(zw − Y) + (σ′v,w + σ′v,下)/2·(Y + Kd − zw)] = ${n(X.Kp, 3)} × [(${n(X.svTop)} + ${n(sw)})/2 × ${n(zw - Y)} + (${n(sw)} + ${n(X.svBot)})/2 × ${n(Y + Kd - zw)}]`, n(X.Pp), 'tf'); })()
+            : eq(`Pp = Kp·(σ′v,上 + σ′v,下)/2·Kd = ${n(X.Kp, 3)} × (${n(X.svTop)} + ${n(X.svBot)})/2 × ${n(Kd)}`, n(X.Pp), 'tf'))
+          + '<p class="note">基礎版底面以上覆土採回填土 γ2，止滑榫範圍（基底以下）採承載層 γ1；地下水位以下分別採 γ2′、γ1′。</p>'; })()}
       ${eq("L' = B − 2|e|", n(X.Lp), 'm')}
       ${eq('L1 = min(Kc, Kd/tan(45−ϕ1/2))', n(X.L1), 'm')}
       ${eq("V1 = L1/L'·ΣV", n(X.V1), 'tf')}
@@ -361,16 +371,16 @@
     let h = `<p class="note">${p.id || ''}　H = ${n(p.H)} m</p>
     <h2>1. 設計依據</h2>
     <h3>1.1 材料參數</h3>
-    <div class="scroll"><table class="t"><thead><tr><th></th><th>γ (tf/m³)</th><th>ϕ (度)</th><th>c (tf/m²)</th></tr></thead><tbody>
-      <tr><td>回填土（γ2、ϕ2、c2）</td><td>${n(p.gB)}</td><td>${n(p.phiB, 1)}</td><td>${n(p.cB)}</td></tr>
-      <tr><td>承載層（γ1、ϕ1、c1）</td><td>${n(p.gF)}</td><td>${n(p.phiF, 1)}</td><td>${n(p.cF)}</td></tr>
-      <tr><td>混凝土</td><td>${n(p.gC)}</td><td>NA</td><td>NA</td></tr></tbody></table></div>
+    <div class="scroll"><table class="t"><thead><tr><th></th><th>γ (tf/m³)</th><th>γ′ = γ − γw (tf/m³)</th><th>ϕ (度)</th><th>c (tf/m²)</th></tr></thead><tbody>
+      <tr><td>回填土（γ2、γ2′、ϕ2、c2）</td><td>${n(p.gB)}</td><td>${n(o.g.g2s)}</td><td>${n(p.phiB, 1)}</td><td>${n(p.cB)}</td></tr>
+      <tr><td>承載層（γ1、γ1′、ϕ1、c1）</td><td>${n(p.gF)}</td><td>${n(o.g.g1s)}</td><td>${n(p.phiF, 1)}</td><td>${n(p.cF)}</td></tr>
+      <tr><td>混凝土</td><td>${n(p.gC)}</td><td>NA</td><td>NA</td><td>NA</td></tr></tbody></table></div>
     <h3>1.2 地表超載重及地下水位</h3>
     ${eq('牆背地表超載 qs', n(p.qs), 'tf/m/m')}
     ${eq('超載性質（配筋載重組合）', p.qsType === 'D' ? '永久載重（歸 D、H）' : '活載重 L', '')}
     ${eq(`牆背地下水位 Hw1 = ${n(p.hw1r, 3)} × H`, n(o.hw1), 'm')}
     ${eq('牆前地下水位 Hw2（自基礎底面；負值表示位於基底以下）', o.hw2 === null ? '無地下水' : n(o.hw2), o.hw2 === null ? '' : 'm')}
-    ${eq('基底下 B 範圍平均單位重 γ′（式(4.3-1) 第三項）' + (o.hw2 === null || o.g.dw >= o.g.B ? ' = γ1' : o.g.dw > 0 ? ' = (γ1 − γw) + (dw/B)·γw' : ' = γ1 − γw'), n(o.g.g1), 'tf/m³')}
+    ${eq('基底下 B 範圍平均單位重（式(4.3-1) 第三項）' + ({ dry: '：γ1（水位位於基底下 B 以深或無地下水）', sub: '：γ1′ = γ1 − γw（基底位於水位以下）', mix: `：γ1m = γ1′ + (dw/B)·γw，dw = ${n(o.g.dw)} m` })[o.g.g1mode], n(o.g.g1), 'tf/m³')}
     <h3>1.3 載重組合（${o.cf.name}）</h3>
     <div class="scroll"><table class="t"><thead><tr><th></th><th>穩定分析</th><th>配筋設計</th></tr></thead><tbody>
       <tr><td>常時</td><td>D+L+H+F</td><td>${o.cf.combN}</td></tr>
@@ -414,7 +424,7 @@
     ${eq('ϕ2 ／ δ ／ θ ／ α', `${n(N.phi, 1)} / ${n(N.delta, 1)} / ${n(N.theta, 1)} / ${n(N.alpha, 1)}`, '度')}
     ${eq(kaLab, n(N.Ka, 3), '', true)}
     ${!N.kaOvr && p.kam === 'rankine' && (N.theta !== 0 || N.alpha !== 0) ? '<p class="note">式(7.3-6) 適用於地表水平、牆背垂直且不計牆面摩擦之情況；本例採 Rankine 解，合力平行地表（傾角 α），未計牆面摩擦 δ 與牆背傾角 θ。</p>' : ''}
-    ${eq('Pa = ½·γ2·H²·Ka　式(7.3-4)（水位以下採浸水單位重 γ2 − γw）', n(N.Pa), 'tf/m')}
+    ${eq('Pa = ½·γ2·H²·Ka　式(7.3-4)（水位以下採浸水單位重 γ2′ = γ2 − γw）', n(N.Pa), 'tf/m')}
     ${eq(`Pah = Pa·cos(${inclLab}) ／ ya`, n(N.Pah) + ' / ' + n(N.ya), 'tf, m')}
     ${eq(`Pav = Pa·sin(${inclLab}) ／ xa`, n(N.Pav) + ' / ' + n(N.xa), 'tf, m')}
     <h4>b. 超載重</h4>
@@ -435,7 +445,7 @@
     ${FX_KAE}
     ${eq('ϕ2 ／ δ（地震時）／ θ ／ α', `${n(N.phi, 1)} / ${n(Q.delta, 1)} / ${n(N.theta, 1)} / ${n(N.alpha, 1)}`, '度')}
     ${eq(Q.kaeOvr ? `KAE（指定值；式(7.3-12) 計算值 = ${n(Q.KaeCalc, 3)}）` : 'KAE', n(Q.Kae, 3), '', true)}
-    ${eq('PAE = ½·γ2·H²·(1−kv)·KAE　式(7.3-11)（水位以下採浸水單位重 γ2 − γw，即 KAE(1−kv)·Σ）', n(Q.Pae), 'tf/m')}
+    ${eq('PAE = ½·γ2·H²·(1−kv)·KAE　式(7.3-11)（水位以下採浸水單位重 γ2′ = γ2 − γw，即 KAE(1−kv)·Σ）', n(Q.Pae), 'tf/m')}
     ${eq('ΔPAE = PAE − PA　式(解7.3-4)', n(Q.dPae), 'tf/m')}
     ${eq('PAEh = PAE·cos(δ+θ) ／ ΔPAEh', n(Q.Paeh) + ' / ' + n(Q.dPaeh), 'tf')}
     ${eq('PAEv = PAE·sin(δ+θ) ／ xae', n(Q.Paev) + ' / ' + n(Q.xae), 'tf, m')}

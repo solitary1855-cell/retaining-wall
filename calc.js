@@ -118,6 +118,8 @@
     g.dw = hw2 === null ? Infinity : Math.max(0, -hw2);   // 基底至地下水位深度
     // 式(4.3-1) γ1：基礎板底以下 B 深度範圍內之平均單位重，水位以下取有效單位重
     g.g1 = g.dw >= B ? p.gF : (p.gF - p.gW) + g.dw / B * p.gW;
+    g.g1s = p.gF - p.gW; g.g2s = p.gB - p.gW;   // 浸水單位重 γ1′（承載層）、γ2′（回填土）
+    g.g1mode = g.dw >= B ? 'dry' : g.dw > 0 ? 'mix' : 'sub';
     o.rhoMin = p.code === 'hw' ? 14 / p.fy : Math.max(0.8 * Math.sqrt(p.fc) / p.fy, 14 / p.fy);
 
     // ---------- 常時 ----------
@@ -154,7 +156,7 @@
       ['(9) 背填坡填土', 0.5 * g.Ws ** 2 * ta * gB, C + T + 2 * g.Ws / 3, p.H + g.Ws * ta / 3],
       ['(10) 牆背斜面上填土', 0.5 * (S - T) * h * gB, C + T + 2 * (S - T) / 3, D1 + D2 + 2 * h / 3],
       ['(11) 踵版斜坡上填土', 0.5 * E * D1 * gB, C + S + 2 * E / 3, D2 + 2 * D1 / 3],
-      ['(12) 趾版上覆土', C * (p.Df + D1 / 2) * p.gF, C / 2, (g.Y + D2 + D1 / 2) / 2],
+      ['(12) 趾版上覆土', C * (p.Df + D1 / 2) * gB, C / 2, (g.Y + D2 + D1 / 2) / 2],
       ['(13) 牆前積水', p.gW * Math.max(0, g.h2 - g.Y) * C, C / 2, g.Y + Math.max(0, g.h2 - g.Y) / 2]
     ].map(([name, W, x, y]) => ({ name, W, x, y }));
     o.SW = o.items.reduce((a, b) => a + b.W, 0);
@@ -335,7 +337,8 @@
     X.phiT = Math.min(40, Math.floor(p.phiF));
     [X.Nc, X.Nq, X.Nr] = NTAB[X.phiT];
     X.g1 = g.g1;
-    X.q = p.gF * g.Y - p.gW * Math.min(g.Y, g.h2);
+    // 基礎版底面以上（牆前覆土 Y）採回填土 γ2，水位以下 γ2′
+    X.q = p.gB * g.Y - p.gW * Math.min(g.Y, g.h2);
     X.beta = D(Math.atan(X.SH / X.SV));
     const kp = tan(45 + p.phiF / 2);
     X.Fcd = p.phiF >= 10 ? 1 + 0.2 * g.Y / B * kp : Math.min(1.5, 1 + 0.2 * g.Y / B);
@@ -349,12 +352,13 @@
     else { X.qt = 0; X.qh = 2 * X.SV / (3 * (B / 2 + X.e)); }
     X.qmax = Math.max(X.qt, X.qh);
     X.FSb = X.qu / X.qmax; X.okB = X.FSb >= X.fsb;
-    // 被動土壓：止滑榫範圍（趾地面下 Y～Y+Kd）依地下水位分段計算有效垂直應力 σ'v = γz − γw·max(0, z − zw)
+    // 被動土壓：止滑榫範圍（趾地面下 Y～Y+Kd）之有效垂直應力 σ'v
+    // 基礎版底面以上（0～Y）為回填土 γ2，以下（止滑榫範圍）為承載層 γ1；水位以下扣 γw
     const zw = g.dw === Infinity ? Infinity : Math.max(0, g.Y - (g.h2 > 0 ? g.h2 : -g.dw)), z1 = g.Y, z2 = g.Y + p.Kd;
-    const sq = z => Math.max(0, z - zw) ** 2;
-    const I = p.gF * (z2 * z2 - z1 * z1) / 2 - p.gW * (sq(z2) - sq(z1)) / 2;
-    X.gp = p.Kd > 0 ? I / ((g.Y + p.Kd / 2) * p.Kd) : p.gF;   // 等效單位重
-    X.Pp = X.gp * (g.Y + p.Kd / 2) * X.Kp * p.Kd;
+    const sv = z => { const a = Math.min(z, z1), b = Math.max(0, z - z1); return p.gB * a + p.gF * b - p.gW * Math.max(0, z - zw); };
+    const NI = 400; let I = 0; for (let i = 0; i < NI; i++) I += sv(z1 + (i + .5) * p.Kd / NI) * p.Kd / NI;
+    X.svTop = sv(z1); X.svBot = sv(z2); X.zw = zw;
+    X.Pp = X.Kp * I;
     X.Lp = B - 2 * Math.abs(X.e);
     X.L1 = Math.min(p.Kc, p.Kd / tan(45 - p.phiF / 2), X.Lp);
     X.V1 = X.Lp <= 0 ? 0 : X.L1 / X.Lp * X.SV; X.V2 = X.SV - X.V1;
