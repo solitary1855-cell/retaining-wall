@@ -86,15 +86,15 @@
       ['Ks', '止滑榫寬度 Ks（繪圖用）', 'm']],
       hint: '選擇牆高 H 即帶入建議尺寸，之後仍可自行修改任一尺寸（修改後顯示「自訂」）。實際條件不同時請自行檢核調整。' },
     { t: '2. 土壤參數', f: [
-      ['gB', '背填土 γ', 'tf/m³'], ['phiB', '背填土 ϕ', '度'], ['cB', '背填土 c', 'tf/m²'],
-      ['gF', '承載層 γ', 'tf/m³'], ['phiF', '承載層 ϕ', '度'], ['cF', '承載層 c', 'tf/m²'],
+      ['gB', '回填土 γ2', 'tf/m³'], ['phiB', '回填土 ϕ2', '度'], ['cB', '回填土 c2', 'tf/m²'],
+      ['gF', '承載層 γ1', 'tf/m³'], ['phiF', '承載層 ϕ1', '度'], ['cF', '承載層 c1', 'tf/m²'],
       ['gC', '混凝土 γc', 'tf/m³'], ['gW', '水 γw', 'tf/m³']] },
     { t: '3. 地表超載重及地下水位', f: [
       ['qs', '牆背地表超載 qs', 'tf/m²'],
       ['qsType', '超載性質（配筋載重組合）', '', 'select', [['L', '活載重 L'], ['D', '永久載重（歸 D、H）']]],
       ['hw1r', '牆背水位比 Hw1/H', ''], ['=hw1', '牆背水位 Hw1', 'm'],
-      ['hw2', '牆前水位 Hw2（自基底）', 'm', 'opt'], ['=g1', '承載層平均單位重 γ1', 'tf/m³']],
-      hint: 'Hw2 空白＝無地下水；正值＝基底以上水深；負值＝水位位於基底以下之深度。γ1 依基礎規範(112) 式(4.3-1)，取基底下 B 深度範圍內平均單位重（水位以下採有效單位重）自動計算。' },
+      ['hw2', '牆前水位 Hw2（自基底）', 'm', 'opt'], ['=g1', '基底下平均單位重 γ′', 'tf/m³']],
+      hint: 'Hw2 空白＝無地下水；正值＝基底以上水深；負值＝水位位於基底以下之深度。γ′ 為基礎規範(112) 式(4.3-1) 第三項所用之基底下 B 深度範圍內平均單位重（水位以下採有效單位重 γ1 − γw，無地下水時 γ′ = γ1），自動計算。' },
     { t: '4. 載重組合（含配筋規範與強度折減因子）', info: 'combo', f: [
       ['code', '配筋規範', '', 'select', [['hw', '公路橋梁設計規範'], ['c112', '112年建築物基礎構造設計規範']]]],
       hint: '係數依所選規範自動帶入。公路橋梁設計規範：第3.23節表3.3。112年建築物基礎構造設計規範：第2.11節規定基礎構材以極限強度法設計時依「建築構造編」辦理，載重組合依112年建築物混凝土結構設計規範表5.3.1及第5.3.6、5.3.7節。組合內容見下表。' },
@@ -117,7 +117,7 @@
       ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb'], ['ck', 'Caquot-Kerisel']]],
       ['kpem', 'KPE 計算方法', '', 'select', [['mo', 'Mononobe-Okabe'], ['rankine', 'Rankine（擬靜態）'], ['rankine0', 'Rankine']]],
       ['deltaP', '被動牆面摩擦角 δp', '度'], ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt']],
-      hint: 'Ka — Coulomb：式(7.3-5)，背填土 ϕ、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp 不宜大於 2ϕ/3。地震時 KPE 依式(7.3-14)，亦可指定。' },
+      hint: 'Ka — Coulomb：式(7.3-5)，回填土 ϕ2、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp 不宜大於 2ϕ/3。地震時 KPE 依式(7.3-14)，亦可指定。' },
     { t: '9. 擋土牆配筋設計', bars: true }
 
   ];
@@ -261,16 +261,16 @@
       ${eq('FS = Mr / Md = ' + n(X.Mr) + ' / ' + n(X.Md), n(X.FSo), ok(X.okO, '≥ ' + n(X.fso, 1)), true)}
       ${eq('e = B/2 − (Mr − Md)/ΣV', n(X.e), ok(X.okE, `B/${elim}=${n(o.g.B / elim)}`) , true)}
       <h3>${no}.3 抗承載檢核（建築物基礎構造設計規範(112) 式(4.3-1)、表4.3-1、表4.3-2）</h3>
-      <div class="scroll"><table class="t"><thead><tr><th></th><th>γ1 (tf/m³)</th><th>ϕ (度)</th><th>c (tf/m²)</th><th>Fcd</th><th>Fci</th><th>Fqd</th><th>Fqi</th><th>Frd</th><th>Fri</th></tr></thead>
+      <div class="scroll"><table class="t"><thead><tr><th></th><th>γ′ (tf/m³)</th><th>ϕ1 (度)</th><th>c1 (tf/m²)</th><th>Fcd</th><th>Fci</th><th>Fqd</th><th>Fqi</th><th>Frd</th><th>Fri</th></tr></thead>
       <tbody><tr><td>承載層</td><td>${n(X.g1)}</td><td>${n(P.phiF, 1)}</td><td>${n(P.cF)}</td><td>${n(X.Fcd)}</td><td>${n(X.Fci)}</td><td>${n(X.Fqd)}</td><td>${n(X.Fci)}</td><td>${n(X.Fqd)}</td><td>${n(X.Fri)}</td></tr></tbody></table></div>
-      ${eq(`Nc = ${n(X.Nc, 1)}，Nq = ${n(X.Nq, 1)}，Nγ = ${n(X.Nr, 1)}（表4.3-1，ϕ = ${X.phiT}°）`, '', '')}
+      ${eq(`Nc = ${n(X.Nc, 1)}，Nq = ${n(X.Nq, 1)}，Nγ = ${n(X.Nr, 1)}（表4.3-1，ϕ1 = ${X.phiT}°）`, '', '')}
       ${eq('載重傾角 β = atan(ΣH/ΣV)', n(X.beta), '度')}
       ${(() => { const Y = o.g.Y, hw = Math.min(Y, o.g.h2);
         return hw > 0
-          ? eq(`q = γ2·Df' = γ·(Y − hw) + (γ − γw)·hw = ${n(P.gF)} × ${n(Y)} − ${n(P.gW)} × ${n(hw)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m，hw = min(Y, Hw2) = ${n(hw)} m）`, n(X.q), 'tf/m²')
-          : eq(`q = γ2·Df' = ${n(P.gF)} × ${n(Y)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m）`, n(X.q), 'tf/m²'); })()}
+          ? eq(`q = γ1·(Y − hw) + (γ1 − γw)·hw = ${n(P.gF)} × ${n(Y)} − ${n(P.gW)} × ${n(hw)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m，hw = min(Y, Hw2) = ${n(hw)} m）`, n(X.q), 'tf/m²')
+          : eq(`q = γ1·Df' = ${n(P.gF)} × ${n(Y)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m）`, n(X.q), 'tf/m²'); })()}
       ${(() => { const f = v => n(v, 3), t1 = P.cF * X.Nc * X.Fcd * X.Fci, t2 = X.q * X.Nq * X.Fqd * X.Fci, t3 = 0.5 * X.g1 * o.g.B * X.Nr * X.Fqd * X.Fri;
-        return eq(`qu = c·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·γ1·B·Nγ·Fγd·Fγi<br>　= ${n(P.cF)} × ${n(X.Nc, 1)} × ${f(X.Fcd)} × ${f(X.Fci)} + ${n(X.q)} × ${n(X.Nq, 1)} × ${f(X.Fqd)} × ${f(X.Fci)} + 0.5 × ${n(X.g1)} × ${n(o.g.B)} × ${n(X.Nr, 1)} × ${f(X.Fqd)} × ${f(X.Fri)}<br>　= ${n(t1)} + ${n(t2)} + ${n(t3)}`, n(X.qu), 'tf/m²', true); })()}
+        return eq(`qu = c1·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·γ′·B·Nγ·Fγd·Fγi<br>　= ${n(P.cF)} × ${n(X.Nc, 1)} × ${f(X.Fcd)} × ${f(X.Fci)} + ${n(X.q)} × ${n(X.Nq, 1)} × ${f(X.Fqd)} × ${f(X.Fci)} + 0.5 × ${n(X.g1)} × ${n(o.g.B)} × ${n(X.Nr, 1)} × ${f(X.Fqd)} × ${f(X.Fri)}<br>　= ${n(t1)} + ${n(t2)} + ${n(t3)}`, n(X.qu), 'tf/m²', true); })()}
       <p class="note">擋土牆為條形基礎（B/L ≈ 0），形狀影響因素 Fcs = Fqs = Fγs = 1.0（表4.3-2），式中省略。</p>
       ${(() => {
         const B = o.g.B, sv = n(X.SV), e = n(X.e, 3), b = n(B);
@@ -290,10 +290,10 @@
       ${eq(o.hw2 === null || o.g.Y + P.Kd <= o.g.Y - o.hw2 ? '被動區單位重 γp' : '被動區等效單位重 γp（依水位分段計算有效應力）', n(X.gp), 'tf/m³')}
       ${eq('Pp = γp(Y + Kd/2)·Kp·Kd', n(X.Pp), 'tf')}
       ${eq("L' = B − 2|e|", n(X.Lp), 'm')}
-      ${eq('L1 = min(Kc, Kd/tan(45−ϕ/2))', n(X.L1), 'm')}
+      ${eq('L1 = min(Kc, Kd/tan(45−ϕ1/2))', n(X.L1), 'm')}
       ${eq("V1 = L1/L'·ΣV", n(X.V1), 'tf')}
       ${eq('V2 = ΣV − V1', n(X.V2), 'tf')}
-      ${eq('ΣHu = V1·tanϕ + V2·tan(2ϕ/3) + (c/2)·B + 50%·Pp', n(X.Hu), 'tf')}
+      ${eq('ΣHu = V1·tanϕ1 + V2·tan(2ϕ1/3) + (c1/2)·B + 50%·Pp', n(X.Hu), 'tf')}
       ${eq('ΣHd', n(X.SH), 'tf')}
       ${eq('FS = ΣHu / ΣHd', n(X.FSs), ok(X.okS, '≥ ' + n(X.fss, 1)), true)}</div><div class="sf-fig">${RWDraw.slide()}</div></div>`;
   }
@@ -321,16 +321,16 @@
   // 1.8 土壓力係數彙整：KA、KAE、KP、KPE 之計算方法／公式／參數／數值
   function kTable() {
     const p = P, N = o.n, Q = o.e, d1 = v => n(v, 1) + '°';
-    const pa = `ϕ = ${d1(N.phi)}、δ = ${d1(N.delta)}、θ = ${d1(N.theta)}、α = ${d1(N.alpha)}`;
+    const pa = `ϕ2 = ${d1(N.phi)}、δ = ${d1(N.delta)}、θ = ${d1(N.theta)}、α = ${d1(N.alpha)}`;
     const ka = N.kaOvr ? ['指定值', '—', '—']
       : p.kam === 'rankine'
-        ? (N.alpha === 0 ? ['Rankine，式(7.3-6)', mK('A', mTan2('−')), `ϕ = ${d1(N.phi)}`]
-          : ['Rankine（地表傾斜）', mK('A', B_KAR), `ϕ = ${d1(N.phi)}、α = ${d1(N.alpha)}`])
+        ? (N.alpha === 0 ? ['Rankine，式(7.3-6)', mK('A', mTan2('−')), `ϕ2 = ${d1(N.phi)}`]
+          : ['Rankine（地表傾斜）', mK('A', B_KAR), `ϕ2 = ${d1(N.phi)}、α = ${d1(N.alpha)}`])
         : ['Coulomb，式(7.3-5)', mK('A', B_KA), pa];
     const kae = Q.kaeOvr ? [`指定值（式(7.3-12) 計算值 = ${n(Q.KaeCalc, 3)}）`, '—', '—']
       : ['Mononobe-Okabe，式(7.3-12)', mK('AE', B_KAE),
-        `ϕ = ${d1(N.phi)}、δ = ${d1(Q.delta)}（地震時）、θ = ${d1(N.theta)}、α = ${d1(N.alpha)}、φ = tan⁻¹[kh/(1−0)] = ${n(Q.vphi)}°（kv 取 0）`];
-    const pf = `ϕ = ${d1(p.phiF)}（承載層）`;
+        `ϕ2 = ${d1(N.phi)}、δ = ${d1(Q.delta)}（地震時）、θ = ${d1(N.theta)}、α = ${d1(N.alpha)}、φ = tan⁻¹[kh/(1−0)] = ${n(Q.vphi)}°（kv 取 0）`];
+    const pf = `ϕ1 = ${d1(p.phiF)}（承載層）`;
     const kp = N.kpOvr ? ['指定值', '—', '—']
       : p.kpm === 'coulomb' ? ['Coulomb', mK('P', B_KP), `${pf}、δp = ${d1(p.deltaP)}、θ = α = 0°`]
       : p.kpm === 'ck' ? ['Caquot-Kerisel，第7.3.3節、圖-解7.3-1', mK('P', `<mi>R</mi><mo>·</mo><msub><mi>K</mi><mi mathvariant="normal">P</mi></msub><mo stretchy="false">(</mo><mi>δ</mi><mo>/</mo><mi>ϕ</mi><mo>=</mo><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo>`) + '<br>' + `<math displaystyle="true"><mrow><msub><mi>K</mi><mi mathvariant="normal">P</mi></msub><mo stretchy="false">(</mo><mi>δ</mi><mo>/</mo><mi>ϕ</mi><mo>=</mo><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo><mo>=</mo>${mFrac(mTan2('+'), '<mi>R</mi><mo stretchy="false">(</mo><mi>δ</mi><mo>=</mo><mn>0</mn><mo stretchy="false">)</mo>')}</mrow></math>`,
@@ -362,15 +362,15 @@
     <h2>1. 設計依據</h2>
     <h3>1.1 材料參數</h3>
     <div class="scroll"><table class="t"><thead><tr><th></th><th>γ (tf/m³)</th><th>ϕ (度)</th><th>c (tf/m²)</th></tr></thead><tbody>
-      <tr><td>背填土</td><td>${n(p.gB)}</td><td>${n(p.phiB, 1)}</td><td>${n(p.cB)}</td></tr>
-      <tr><td>承載層</td><td>${n(p.gF)}</td><td>${n(p.phiF, 1)}</td><td>${n(p.cF)}</td></tr>
+      <tr><td>回填土（γ2、ϕ2、c2）</td><td>${n(p.gB)}</td><td>${n(p.phiB, 1)}</td><td>${n(p.cB)}</td></tr>
+      <tr><td>承載層（γ1、ϕ1、c1）</td><td>${n(p.gF)}</td><td>${n(p.phiF, 1)}</td><td>${n(p.cF)}</td></tr>
       <tr><td>混凝土</td><td>${n(p.gC)}</td><td>NA</td><td>NA</td></tr></tbody></table></div>
     <h3>1.2 地表超載重及地下水位</h3>
     ${eq('牆背地表超載 qs', n(p.qs), 'tf/m/m')}
     ${eq('超載性質（配筋載重組合）', p.qsType === 'D' ? '永久載重（歸 D、H）' : '活載重 L', '')}
     ${eq(`牆背地下水位 Hw1 = ${n(p.hw1r, 3)} × H`, n(o.hw1), 'm')}
     ${eq('牆前地下水位 Hw2（自基礎底面；負值表示位於基底以下）', o.hw2 === null ? '無地下水' : n(o.hw2), o.hw2 === null ? '' : 'm')}
-    ${eq('承載層平均單位重 γ1（基底下 B 範圍）' + (o.hw2 === null || o.g.dw >= o.g.B ? '' : o.g.dw > 0 ? ' = γ′ + (dw/B)·γw' : ' = γ − γw'), n(o.g.g1), 'tf/m³')}
+    ${eq('基底下 B 範圍平均單位重 γ′（式(4.3-1) 第三項）' + (o.hw2 === null || o.g.dw >= o.g.B ? ' = γ1' : o.g.dw > 0 ? ' = (γ1 − γw) + (dw/B)·γw' : ' = γ1 − γw'), n(o.g.g1), 'tf/m³')}
     <h3>1.3 載重組合（${o.cf.name}）</h3>
     <div class="scroll"><table class="t"><thead><tr><th></th><th>穩定分析</th><th>配筋設計</th></tr></thead><tbody>
       <tr><td>常時</td><td>D+L+H+F</td><td>${o.cf.combN}</td></tr>
@@ -411,10 +411,10 @@
     <p class="note">穩定分析時，將擋土牆本身及趾（踵）版上方之填土視為一整體。</p>
     <h3>3.1 作用力計算</h3>
     <h4>a. 土壓力（${kaMeth === '指定值' ? '主動土壓力係數指定值' : kaMeth + ' 主動土壓力係數'}）</h4>
-    ${eq('ϕ ／ δ ／ θ ／ α', `${n(N.phi, 1)} / ${n(N.delta, 1)} / ${n(N.theta, 1)} / ${n(N.alpha, 1)}`, '度')}
+    ${eq('ϕ2 ／ δ ／ θ ／ α', `${n(N.phi, 1)} / ${n(N.delta, 1)} / ${n(N.theta, 1)} / ${n(N.alpha, 1)}`, '度')}
     ${eq(kaLab, n(N.Ka, 3), '', true)}
     ${!N.kaOvr && p.kam === 'rankine' && (N.theta !== 0 || N.alpha !== 0) ? '<p class="note">式(7.3-6) 適用於地表水平、牆背垂直且不計牆面摩擦之情況；本例採 Rankine 解，合力平行地表（傾角 α），未計牆面摩擦 δ 與牆背傾角 θ。</p>' : ''}
-    ${eq('Pa', n(N.Pa), 'tf/m')}
+    ${eq('Pa = ½·γ2·H²·Ka　式(7.3-4)（水位以下採浸水單位重 γ2 − γw）', n(N.Pa), 'tf/m')}
     ${eq(`Pah = Pa·cos(${inclLab}) ／ ya`, n(N.Pah) + ' / ' + n(N.ya), 'tf, m')}
     ${eq(`Pav = Pa·sin(${inclLab}) ／ xa`, n(N.Pav) + ' / ' + n(N.xa), 'tf, m')}
     <h4>b. 超載重</h4>
@@ -431,11 +431,11 @@
     <p class="note">ϕ 為牆背土壤內摩擦角，φ 為地震合成角；θ 為牆背面與垂直面交角（逆時針為正），α 為牆背地表面與水平面之交角。本法原則上只適用於非凝聚性土壤。</p>
     ${eq(`φ = tan⁻¹[kh/(1−kv)] = tan⁻¹[${n(P.kh, 3)}/(1−0)]（kv ＝ 0）`, n(Q.vphi), '度')}
     <p class="note">註：計算 φ 時 kv 取 0（不採第6節輸入之 kv）。依據：建築物基礎構造設計規範(112) 第7.3.4節【解說】3：「設計所採用之垂直向地震係數 kv，原則上可取基地地表垂直向尖峰加速度值之半估計，惟對於遠距離之地震，通常可忽略垂直地震力之影響，即令 kv ＝ 0。」</p>
-    ${eq('ϕ − φ − α', n(Q.crit), Q.okCrit ? '≥ 0 OK!' : '< 0 NG!（背填土失穩，KAE 無解）')}
+    ${eq('ϕ2 − φ − α', n(Q.crit), Q.okCrit ? '≥ 0 OK!' : '< 0 NG!（回填土失穩，KAE 無解）')}
     ${FX_KAE}
-    ${eq('ϕ ／ δ（地震時）／ θ ／ α', `${n(N.phi, 1)} / ${n(Q.delta, 1)} / ${n(N.theta, 1)} / ${n(N.alpha, 1)}`, '度')}
+    ${eq('ϕ2 ／ δ（地震時）／ θ ／ α', `${n(N.phi, 1)} / ${n(Q.delta, 1)} / ${n(N.theta, 1)} / ${n(N.alpha, 1)}`, '度')}
     ${eq(Q.kaeOvr ? `KAE（指定值；式(7.3-12) 計算值 = ${n(Q.KaeCalc, 3)}）` : 'KAE', n(Q.Kae, 3), '', true)}
-    ${eq('PAE = ½·γ·H²·(1−kv)·KAE　式(7.3-11)（水位以下採浸水單位重，即 KAE(1−kv)·Σ）', n(Q.Pae), 'tf/m')}
+    ${eq('PAE = ½·γ2·H²·(1−kv)·KAE　式(7.3-11)（水位以下採浸水單位重 γ2 − γw，即 KAE(1−kv)·Σ）', n(Q.Pae), 'tf/m')}
     ${eq('ΔPAE = PAE − PA　式(解7.3-4)', n(Q.dPae), 'tf/m')}
     ${eq('PAEh = PAE·cos(δ+θ) ／ ΔPAEh', n(Q.Paeh) + ' / ' + n(Q.dPaeh), 'tf')}
     ${eq('PAEv = PAE·sin(δ+θ) ／ xae', n(Q.Paev) + ' / ' + n(Q.xae), 'tf, m')}

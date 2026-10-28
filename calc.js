@@ -33,7 +33,7 @@
 
   const DEFAULTS = {
     id: 'RW-1',
-    // 預設條件比照「道路工程參考圖」R-008：背填土 γ=1.9、活載重相當 60cm 土重、Z=0.33、f'c=210、牆背設濾層洩水（不計水位）；
+    // 預設條件比照「道路工程參考圖」R-008：回填土 γ=1.9、活載重相當 60cm 土重、Z=0.33、f'c=210、牆背設濾層洩水（不計水位）；
     // 承載層採緊密礫石級配（R-008 附註10：承載力不足時挖除以礫石級配回填）
     gB: 1.9, phiB: 30, cB: 0, gF: 2.1, phiF: 38, cF: 0, gC: 2.4, gW: 1.0,
     qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
@@ -75,7 +75,7 @@
     return cos(alpha) * (cos(alpha) - r) / (cos(alpha) + r);
   }
   // 建築物基礎構造設計規範(112) 式(7.3-12)：ϕ=內摩擦角、φ=地震合成角(此處參數名 vphi)
-  // 若 ϕ−φ−α < 0（背填土失穩），根號項取 0 並由 Q.okCrit 標示 NG
+  // 若 ϕ−φ−α < 0（回填土失穩），根號項取 0 並由 Q.okCrit 標示 NG
   function moKae(phi, delta, theta, alpha, vphi) {
     return cos(phi - theta - vphi) ** 2 / (cos(vphi) * cos(theta) ** 2 * cos(delta + vphi + theta) *
       (1 + Math.sqrt(Math.max(0, sin(phi + delta) * sin(phi - vphi - alpha)) / (cos(delta + vphi + theta) * cos(theta - alpha)))) ** 2);
