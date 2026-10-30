@@ -39,7 +39,7 @@
     qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
     fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
-    cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
+    cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
     preset: '', T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
@@ -190,10 +190,15 @@
     Q.vphi = D(Math.atan(p.kh / (1 - Q.kvPhi)));
     Q.crit = N.phi - Q.vphi - N.alpha; Q.okCrit = Q.crit >= 0;
     Q.delta = p.deltaRE * p.phiB;   // 地震時牆背摩擦角（獨立輸入）
-    Q.KaeCalc = moKae(N.phi, Q.delta, N.theta, N.alpha, Q.vphi);
+    // KAE：Mononobe-Okabe 式(7.3-12)；或擬靜態 Rankine（虛擬背面垂直、不計牆面摩擦：式(7.3-12) 令 δ = θ = 0）
+    if (p.kaem !== 'rankine') p.kaem = 'mo';
+    const rkE = p.kaem === 'rankine';
+    Q.deltaA = rkE ? 0 : Q.delta; Q.thetaA = rkE ? 0 : N.theta;
+    Q.inclE = rkE ? N.alpha : Q.delta + N.theta;   // 合力傾角（自水平）
+    Q.KaeCalc = moKae(N.phi, Q.deltaA, Q.thetaA, N.alpha, Q.vphi);
     Q.kaeOvr = useOvr(p.kaeOvr);
     Q.Kae = Q.kaeOvr ? +p.kaeOvr : Q.KaeCalc;
-    Q.Pae = Q.Kae * (1 - p.kv) * N.Ip; Q.Paeh = Q.Pae * cos(Q.delta + N.theta); Q.Paev = Q.Pae * sin(Q.delta + N.theta);
+    Q.Pae = Q.Kae * (1 - p.kv) * N.Ip; Q.Paeh = Q.Pae * cos(Q.inclE); Q.Paev = Q.Pae * sin(Q.inclE);
     Q.dPae = Q.Pae - N.Pa; Q.dPaeh = Q.Paeh - N.Pah;
     // 合力作用點 H̄：式(解7.3-5)、(解7.3-7)、對牆頂旋轉 0.55H
     const hbar = (S, yS, T) => T === 0 ? 0 : mv.t ? mv.t * p.H :
@@ -249,7 +254,7 @@
     // ---------- 配筋 ----------
     const bar = k => { const b = p.bars[k]; const Ab = BARS[b.D] || 0; return { Ab, As: b.s > 0 ? Ab * 100 / b.s : 0 }; };
     o.bar = {}; for (const k of Object.keys(p.bars)) o.bar[k] = bar(k);
-    const KAH = N.Ka * cos(N.incl), KAEH = Q.Kae * (1 - p.kv) * cos(Q.delta + N.theta);
+    const KAH = N.Ka * cos(N.incl), KAEH = Q.Kae * (1 - p.kv) * cos(Q.inclE);
     o.KAH = KAH; o.KAEH = KAEH; o.m = p.fy / (0.85 * p.fc);
     const zw = Math.max(0, p.H - hw1);
     function stem(z) {

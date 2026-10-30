@@ -116,6 +116,7 @@
       ['fso_e', '抗傾覆（地震）', ''], ['fsb_n', '抗承載（常時）', ''], ['fsb_e', '抗承載（地震）', '']] },
     { t: '8. 土壓力參數', f: [
       ['kam', 'Ka 計算方法', '', 'select', [['coulomb', 'Coulomb'], ['rankine', 'Rankine']]],
+      ['kaem', 'KAE 計算方法', '', 'select', [['mo', 'Mononobe-Okabe'], ['rankine', 'Rankine（擬靜態）']]],
       ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb'], ['ck', 'Caquot-Kerisel（反推）'], ['ckc', 'Caquot-Kerisel（查圖）']]],
       ['kpem', 'KPE 計算方法', '', 'select', [['mo', 'Mononobe-Okabe'], ['rankine', 'Rankine（擬靜態）'], ['rankine0', 'Rankine']]],
       ['kaOvr', 'Ka 指定值（空白=計算）', '', 'opt'], ['kaeOvr', 'KAE 指定值（空白=計算）', '', 'opt'],
@@ -207,6 +208,8 @@
   const B_KPE = mFrac(mT('cos²(ϕ+θ−φ)'), mT('cosφ·cos²θ·cos(δ−θ+φ)') + mBox('−', 'sin(ϕ+δ)·sin(ϕ−φ+α)', 'cos(δ−θ+φ)·cos(α−θ)'));
   const SQ = `<msqrt>${mT('cos²α−cos²ϕ')}</msqrt>`;
   const B_KAR = mT('cosα·') + mFrac(mT('cosα−') + SQ, mT('cosα+') + SQ);
+  const B_KAER = mFrac(mT('cos²(ϕ−φ)'), mT('cos²φ') + mBox('+', 'sinϕ·sin(ϕ−φ−α)', 'cosφ·cosα'));
+  const FX_KAER = fx('AE', B_KAER, '擬靜態 Rankine（式(7.3-12) 令 δ = θ = 0）');
   const FX_KAE = fx('AE', mFrac(mT('cos²(ϕ−θ−φ)'), mT('cosφ·cos²θ·cos(δ+φ+θ)') + mBox('+', 'sin(ϕ+δ)·sin(ϕ−φ−α)', 'cos(δ+φ+θ)·cos(θ−α)')), '式(7.3-12)');
   const B_KPER = mFrac(mT('cos²(ϕ−φ)'), mT('cos²φ') + mBox('−', 'sinϕ·sin(ϕ−φ)', 'cosφ'));
   const FX_KPER = fx('PE', B_KPER, '擬靜態 Rankine（式(7.3-14) 令 δ = θ = α = 0）');
@@ -336,6 +339,8 @@
           : ['Rankine（地表傾斜）', mK('A', B_KAR), `ϕ2 = ${d1(N.phi)}、α = ${d1(N.alpha)}`])
         : ['Coulomb，式(7.3-5)', mK('A', B_KA), pa];
     const kae = Q.kaeOvr ? [`指定值（式(7.3-12) 計算值 = ${n(Q.KaeCalc, 3)}）`, '—', '—']
+      : p.kaem === 'rankine' ? ['擬靜態 Rankine（式(7.3-12) 令 δ = θ = 0，虛擬背面垂直、不計牆面摩擦）', mK('AE', B_KAER),
+        `ϕ2 = ${d1(N.phi)}、α = ${d1(N.alpha)}、φ = tan⁻¹[kh/(1−kv)] = ${n(Q.vphi)}°（kv 取 ${Q.kvPhi === 0 ? '0' : n(Q.kvPhi, 3)}）`]
       : ['Mononobe-Okabe，式(7.3-12)', mK('AE', B_KAE),
         `ϕ2 = ${d1(N.phi)}、δ = ${d1(Q.delta)}（地震時）、θ = ${d1(N.theta)}、α = ${d1(N.alpha)}、φ = tan⁻¹[kh/(1−kv)] = ${n(Q.vphi)}°（kv 取 ${Q.kvPhi === 0 ? '0' : n(Q.kvPhi, 3)}）`];
     const pf = `ϕ1 = ${d1(p.phiF)}（承載層）`;
@@ -439,18 +444,18 @@
     ${stabReport(N, 3, 6, kpLab)}
 
     <h2>4. 穩定分析（地震時）</h2>
-    <h3>4.1 動態主動土壓力（建築物基礎構造設計規範(112) 第7.3.4節，Mononobe-Okabe）</h3>
+    <h3>4.1 動態主動土壓力（建築物基礎構造設計規範(112) 第7.3.4節，${P.kaem === 'rankine' ? '擬靜態 Rankine' : 'Mononobe-Okabe'}）</h3>
     <p class="note">ϕ 為牆背土壤內摩擦角，φ 為地震合成角；θ 為牆背面與垂直面交角（逆時針為正），α 為牆背地表面與水平面之交角。本法原則上只適用於非凝聚性土壤。</p>
     ${eq(`φ = tan⁻¹[kh/(1−kv)] = tan⁻¹[${n(P.kh, 3)}/(1−${Q.kvPhi === 0 ? '0' : n(Q.kvPhi, 3)})]` + (P.kvPhi0 === false ? '' : '（kv ＝ 0）'), n(Q.vphi), '度')}
     ${P.kvPhi0 === false ? '' : `<p class="note">註：計算 φ 時 kv 取 0（不採第6節輸入之 kv）。依據：建築物基礎構造設計規範(112) 第7.3.4節【解說】3：「設計所採用之垂直向地震係數 kv，原則上可取基地地表垂直向尖峰加速度值之半估計，惟對於遠距離之地震，通常可忽略垂直地震力之影響，即令 kv ＝ 0。」</p>`}
     ${eq('ϕ2 − φ − α', n(Q.crit), Q.okCrit ? '≥ 0 OK!' : '< 0 NG!（回填土失穩，KAE 無解）')}
-    ${FX_KAE}
-    ${eq('ϕ2 ／ δ（地震時）／ θ ／ α', `${n(N.phi, 1)} / ${n(Q.delta, 1)} / ${n(N.theta, 1)} / ${n(N.alpha, 1)}`, '度')}
+    ${Q.kaeOvr ? '' : P.kaem === 'rankine' ? FX_KAER : FX_KAE}
+    ${eq('ϕ2 ／ δ（地震時）／ θ ／ α' + (P.kaem === 'rankine' ? '（擬靜態 Rankine 取 δ = θ = 0）' : ''), `${n(N.phi, 1)} / ${n(Q.deltaA, 1)} / ${n(Q.thetaA, 1)} / ${n(N.alpha, 1)}`, '度')}
     ${eq(Q.kaeOvr ? `KAE（指定值；式(7.3-12) 計算值 = ${n(Q.KaeCalc, 3)}）` : 'KAE', n(Q.Kae, 3), '', true)}
     ${eq('PAE = ½·γ2·H²·(1−kv)·KAE　式(7.3-11)（水位以下採浸水單位重 γ2′ = γ2 − γw，即 KAE(1−kv)·Σ）', n(Q.Pae), 'tf/m')}
     ${eq('ΔPAE = PAE − PA　式(解7.3-4)', n(Q.dPae), 'tf/m')}
-    ${eq('PAEh = PAE·cos(δ+θ) ／ yae', n(Q.Paeh) + ' / ' + n(Q.yae), 'tf, m')}
-    ${eq('PAEv = PAE·sin(δ+θ) ／ xae', n(Q.Paev) + ' / ' + n(Q.xae), 'tf, m')}
+    ${eq(`PAEh = PAE·cos(${P.kaem === 'rankine' ? 'α' : 'δ+θ'}) ／ yae`, n(Q.Paeh) + ' / ' + n(Q.yae), 'tf, m')}
+    ${eq(`PAEv = PAE·sin(${P.kaem === 'rankine' ? 'α' : 'δ+θ'}) ／ xae`, n(Q.Paev) + ' / ' + n(Q.xae), 'tf, m')}
     ${eq(`合力作用點（${o.mv.name}）` + ({ rotBase: '：H̄ = [PA·yA + ΔPAE·(2H/3)]/PAE　式(解7.3-5)', slide: '：H̄ = [PA(0.42H) + ΔPAE(0.48H)]/PAE　式(解7.3-7)', rotTop: '：H̄ = 0.55H' }[P.mvm] || ''), n(Q.yae), 'm', true)}
     ${P.mvm === 'rotBase' ? `<p class="note">yA = ${n(N.ya)} m 為靜態主動土壓力實際形心（無地下水時即 H/3）。</p>` : ''}
     ${eq('PQEh（超載）／ yqe', n(Q.Pqeh) + ' / ' + n(Q.yqe), 'tf, m')}
