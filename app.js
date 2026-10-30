@@ -84,7 +84,7 @@
       ['E', '(7) 基礎踵長 E', 'm'], ['D1', '(8) 基礎上高 D1', 'm'], ['D2', '(9) 基礎下高 D2', 'm'],
       ['=eta', '(10) 牆背斜率 η = (S − T)/h', ''], ['Kd', '(11) 止滑榫尺寸 Kd', 'm'], ['Kc', '(12) 止滑榫位置 Kc', 'm'],
       ['Df', '(13) 趾版覆土 Df', 'm'], ['=Y', '(14) 牆前回填 Y = Df + D1 + D2', 'm'], ['n', '(15) 背填坡度 1V : nH', 'n'],
-      ['Ks', '止滑榫寬度 Ks（繪圖用）', 'm']],
+      ['Ks', '止滑榫寬度 Ks', 'm']],
       hint: '選擇牆高 H 即帶入建議尺寸，之後仍可自行修改任一尺寸（修改後顯示「自訂」）。實際條件不同時請自行檢核調整。' },
     { t: '2. 土壤參數', f: [
       ['gB', '回填土 γ2', 'tf/m³'], ['phiB', '回填土 ϕ2', '度'], ['cB', '回填土 c2', 'tf/m²'],
@@ -253,7 +253,7 @@
   // ---------- report ----------
   function forceTable(rows, ext, kind) {
     let h = `<div class="scroll"><table class="t"><thead><tr><th>項目</th><th>V (tf)</th><th>H (tf)</th><th>x (m)</th><th>y (m)</th><th>Mr (tf·m)</th><th>Md (tf·m)</th></tr></thead><tbody>`;
-    if (kind === 'e') h += `<tr><td>Σ(1)~(13) 自重</td><td>${n(o.SW)}</td><td>–</td><td>–</td><td>–</td><td>${n(o.SWx)}</td><td>–</td></tr>`;
+    if (kind === 'e') h += `<tr><td>Σ(1)~(14) 自重</td><td>${n(o.SW)}</td><td>–</td><td>–</td><td>–</td><td>${n(o.SWx)}</td><td>–</td></tr>`;
     for (const it of rows) {
       if (kind === 'n') h += `<tr><td>${it.name}</td><td>${n(it.W)}</td><td>–</td><td>${n(it.x)}</td><td>${n(it.y)}</td><td>${n(it.W * it.x)}</td><td>–</td></tr>`;
       else h += `<tr><td>${it.name.replace(')', ")'")}</td><td>${n(-P.kv * it.W)}</td><td>${n(P.kh * it.W)}</td><td>${n(it.x)}</td><td>${n(it.y)}</td><td>${n(-P.kv * it.W * it.x)}</td><td>${n(P.kh * it.W * it.y)}</td></tr>`;

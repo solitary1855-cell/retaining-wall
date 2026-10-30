@@ -166,7 +166,8 @@
       ['(10) 牆背斜面上填土', 0.5 * (S - T) * h * gB, C + T + 2 * (S - T) / 3, D1 + D2 + 2 * h / 3],
       ['(11) 踵版斜坡上填土', 0.5 * E * D1 * gB, C + S + 2 * E / 3, D2 + 2 * D1 / 3],
       ['(12) 趾版上覆土', C * (p.Df + D1 / 2) * gB, C / 2, (g.Y + D2 + D1 / 2) / 2],
-      ['(13) 牆前積水', p.gW * Math.max(0, g.h2 - g.Y) * C, C / 2, g.Y + Math.max(0, g.h2 - g.Y) / 2]
+      ['(13) 牆前積水', p.gW * Math.max(0, g.h2 - g.Y) * C, C / 2, g.Y + Math.max(0, g.h2 - g.Y) / 2],
+      ['(14) 止滑榫', (p.Kd > 0 ? (p.Ks || 0) * p.Kd : 0) * gc, p.Kc + (p.Ks || 0) / 2, -p.Kd / 2]
     ].map(([name, W, x, y]) => ({ name, W, x, y }));
     o.SW = o.items.reduce((a, b) => a + b.W, 0);
     o.SWx = o.items.reduce((a, b) => a + b.W * b.x, 0);

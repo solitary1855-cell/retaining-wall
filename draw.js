@@ -272,8 +272,8 @@
     s += lab(C + T / 2, H * 0.62, 1) + lab(C + S / 2, yb / 2, 2) + lab(C / 2, D2 / 2, 3) + lab(C + S + E / 2, D2 / 2, 4)
       + lab(C * 0.66, D2 + D1 * 0.3, 5) + lab(C + S + E / 3, D2 + D1 * 0.3, 6) + lab(C + T + (S - T) / 3, yb + 0.6, 7)
       + lab(C + S + E / 2, (yb + H) / 2, 8) + lab(C + T + Ws * 0.7, H + Ws * ta * 0.3, 9) + lab(C + T + 2 * (S - T) / 3, H - 0.55, 10)
-      + lab(C + S + E * 0.75, yb - D1 * 0.3, 11) + lab(C / 2, (D2 + Y) / 2 + 0.05, 12) + lab(C / 2, Y + 0.14, 13);
-    s += `<text class="cap" x="${F.W - 6}" y="14" text-anchor="end">編號對應作用力總表 (1)~(13)</text>`;
+      + lab(C + S + E * 0.75, yb - D1 * 0.3, 11) + lab(C / 2, (D2 + Y) / 2 + 0.05, 12) + lab(C / 2, Y + 0.14, 13) + lab(Kc + Ks / 2, -Kd / 2, 14);
+    s += `<text class="cap" x="${F.W - 6}" y="14" text-anchor="end">編號對應作用力總表 (1)~(14)</text>`;
     return s + '</svg>';
   }
 
