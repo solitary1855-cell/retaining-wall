@@ -12,6 +12,7 @@
     if (!['coulomb', 'ck', 'ckc'].includes(q.kpm)) q.kpm = 'rankine';
     delete q.deltaP;   // 已移除「被動牆面摩擦角 δp」，改採 δ
     if ('wt' in q) { if (!q.wt && +q.hw2 === 0) q.hw2 = null; delete q.wt; }   // 已移除「基底位於地下水位下」，改由 Hw2 判斷
+    if (!q.rcVer) { Object.assign(q, { dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni' }); q.rcVer = 1; }   // 配筋改參照中興計算書
     return q; }  // 已移除「範例沿用法」
   function save() { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {} }
 
@@ -120,11 +121,14 @@
       ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb'], ['ck', 'Caquot-Kerisel（反推）'], ['ckc', 'Caquot-Kerisel（查圖）']]],
       ['kpem', 'KPE 計算方法', '', 'select', [['mo', 'Mononobe-Okabe'], ['rankine', 'Rankine（擬靜態）'], ['rankine0', 'Rankine']]],
       ['kaOvr', 'Ka 指定值（空白=計算）', '', 'opt'], ['kaeOvr', 'KAE 指定值（空白=計算）', '', 'opt'],
-      ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt'],
-      ['dStemN', '牆身配筋常時 δ/ϕ2（空白=同穩定分析）', '', 'opt'], ['dStemE', '牆身配筋地震時 δ/ϕ2（空白=同穩定分析）', '', 'opt'], ['stemCos', '牆身配筋土壓取水平分量 cos(δ+θ)', '', 'bool']],
+      ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt']],
       htmlAfter: 'kpm', html: `<details class="figtog"><summary>圖-解7.3-1（Caquot-Kerisel 土壓力係數）</summary><a href="fig-7-3-1.jpg" target="_blank" rel="noopener" title="開新視窗檢視原尺寸"><img src="fig-7-3-1.jpg" alt="圖-解7.3-1 主動與被動土壓力係數－牆背傾斜" loading="lazy"></a><p class="hint">建築物基礎構造設計規範(112) 圖-解7.3-1（轉錄自 NAVFAC DM7.2, 1986）。Kp = R × Kp(δ/ϕ = −1)：上方曲線為 δ/ϕ = −1 之 Kp（依牆面傾角 θ），左上表為折減係數 R。止滑榫前緣垂直取 θ = 0°。「查圖」採 θ = 0° 曲線數位化值（ϕ ≤ 38°）；「反推」以 tan²(45° + ϕ/2)/R(δ = 0) 計算。</p></details>`,
-      hint: 'Ka — Coulomb：式(7.3-5)，回填土 ϕ2、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ1、δp（第2節）；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp 不宜大於 2ϕ1/3。地震時 KPE 依式(7.3-14)，亦可指定。<br>牆身配筋 — 可另指定設計用 δ/ϕ2 及是否乘 cos(δ+θ)；中興計算書採常時 δ = ϕ/2、地震時 δ = 0，且不乘 cos（輸入 0.5、0、否）。超載側壓均不乘 cos。' },
-    { t: '9. 擋土牆配筋設計', bars: true }
+      hint: 'Ka — Coulomb：式(7.3-5)，回填土 ϕ2、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ1、δp（第2節）；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp 不宜大於 2ϕ1/3。地震時 KPE 依式(7.3-14)，亦可指定。' },
+    { t: '9. 擋土牆配筋設計', bars: true, f: [
+      ['dStemN', '牆身配筋常時 δ/ϕ2（空白=同穩定分析）', '', 'opt'], ['dStemE', '牆身配筋地震時 δ/ϕ2（空白=同穩定分析）', '', 'opt'],
+      ['stemCos', '牆身配筋土壓取水平分量 cos(δ+θ)', '', 'bool'], ['stemInert', '牆身配筋計入牆身慣性力', '', 'bool'],
+      ['upMode', '基礎版底揚壓力分布', '', 'select', [['uni', '均佈（踵版 γw·Hw1、趾版 γw·Hw2）'], ['trap', '梯形（同穩定分析 Pb）']]]],
+      hint: '預設參照中興工程顧問擋土牆計算書：牆身配筋常時 δ = ϕ2/2、地震時 δ = 0，土壓係數直接作為水平係數（不乘 cos），地震時不計牆身慣性力；踵版扣除均佈揚壓力 γw·Hw1；基礎版需要鋼筋量不小於 ρt/2（ρt 為基礎溫度鋼筋比）。超載側壓均不乘 cos。' }
 
   ];
 
@@ -150,7 +154,8 @@
             <td><input data-bar="${k}" data-f="s" inputmode="decimal" value="${P.bars[k].s}"></td></tr>`;
         }
         box.insertAdjacentHTML('beforeend', h + '</tbody></table></div>');
-      } else {
+      }
+      if (g.f && !(g.info && !g.f)) {
         for (const [k, lab, unit, type, opts] of g.f) {
           const id = 'in_' + k.replace('=', 'c_');
           let ctl;
@@ -323,7 +328,7 @@
       ${eq('Mu = max(常時, 地震時)', n(r.Mu), 'tf·m/m', true)}
       ${eq('Rn = Mu/(φb·b·d²)', n(r.Rn, 3), 'kgf/cm²')}
       ${eq(`ρ = (1/m)[1 − √(1 − 2mRn/fy)]，fy = ${n(r.fy, 0)}，m = fy/0.85fc' = ` + n(r.m, 3), r.rho > 1 ? '斷面不足' : n(r.rho, 4), '')}
-      ${eq('ρmin ／ 4ρ/3', n(r.rhoMin, 4) + ' / ' + n(r.rho43, 4), '')}
+      ${r.rhoT2 ? eq('ρmin ／ 4ρ/3 ／ ρt/2', n(r.rhoMin, 4) + ' / ' + n(r.rho43, 4) + ' / ' + n(r.rhoT2, 4), '') + eq('採用 ρ = max{ρ, min(ρmin, 4ρ/3), ρt/2}', n(r.rhoU, 4), '') : eq('ρmin ／ 4ρ/3', n(r.rhoMin, 4) + ' / ' + n(r.rho43, 4), '') + eq('採用 ρ = max[ρ, min(ρmin, 4ρ/3)]', n(r.rhoU, 4), '')}
       ${eq('As = ρ·b·d', n(r.Asr), 'cm²/m', true)}
       ${eq(`As'（${r.desc}）`, n(r.Asp), r.okM ? "As'≥As OK!" : "As'<As NG!", true)}`;
   }
@@ -470,14 +475,14 @@
     <h2>5. 配筋設計（USD）</h2>
     <h3>5.1 設計條件</h3>
     <p>1. 牆身與基礎交界為剛性區。2. 牆身、趾版及踵版視為懸臂梁（公路橋梁設計規範 6.2.2、6.2.3）。
-    3. 地震時土壓動態增量作用點依牆體變位模式（${o.mv.name}，第7.3.4節解說2，以斷面深度 z 取代 H），並計入牆身慣性力。4. 基礎版依地盤反力分 40 等分條帶，沿版長逐斷面計算 V、M；配筋時地盤反力以因數化載重（各分項乘載重係數）重新計算，版底揚壓力（與穩定分析 Pb 相同之梯形分布）乘 F 係數自版上載重扣除。踵版、趾版均分別檢核正、反向彎矩（上層、下層鋼筋），剪力取各斷面絕對值最大者。
+    3. 地震時土壓動態增量作用點依牆體變位模式（${o.mv.name}，第7.3.4節解說2，以斷面深度 z 取代 H），${P.stemInert === false ? '不計牆身慣性力（參照中興計算書）' : '並計入牆身慣性力'}。4. 基礎版依地盤反力分 40 等分條帶，沿版長逐斷面計算 V、M；配筋時地盤反力以因數化載重（各分項乘載重係數）重新計算，版底揚壓力（均佈或同穩定分析 Pb 之梯形分布，見第9節）乘 F 係數自版上載重扣除。踵版、趾版均分別檢核正、反向彎矩（上層、下層鋼筋），剪力取各斷面絕對值最大者。
     5. 載重組合（${o.cf.name}）：常時 ${o.cf.combN}；地震時 ${o.cf.combE}。${o.cf.note ? o.cf.note + (P.qsType === 'D' ? '本案超載視為永久載重，垂直分量歸 D、側壓歸 H。' : '') : ''}多組組合時取最不利者。</p>
     ${eq("m = fy/0.85fc'（D13 以上）", n(o.m, 3), '')}${eq('ρmin（D13 以上）', n(o.rhoMin, 4), '')}<p class="note">主筋含 D10 之斷面以 fy = ${n(p.fy10, 0)} kgf/cm² 計算 m 與 ρmin。</p>
     <h3>5.2 牆身設計</h3>${(() => { const k = o.stemK; return eq(`設計用牆背摩擦角 δ：常時 ／ 地震時${k.ovrN || k.ovrE ? '（另行指定）' : '（同穩定分析）'}`, n(k.dN, 1) + ' / ' + n(k.dE, 1), '度') + eq('Ka ／ KAE', n(k.Ka, 3) + ' / ' + n(k.Kae, 3), '') + eq(k.cos ? '水平係數 Ka·cos(δ+θ) ／ KAE·(1+kv)·cos(δ+θ)' : '水平係數 Ka ／ KAE·(1+kv)（不乘 cos(δ+θ)）', n(o.KAH, 3) + ' / ' + n(o.KAEH, 3), ''); })()}${o.rc.slice(0, 3).map(rcReport).join('')}
     ${o.min.slice(0, 2).map((m, i) => `<h4>(${i + 4}) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}
     <h3>5.3 基礎版設計</h3>
     ${eq('q0（超載）／ q1（填土）／ q2（版重）', `${n(o.base.q0)} / ${n(o.base.q1)} / ${n(o.base.q2)}`, 'tf/m²')}
-    ${o.base.upH > 0 ? eq('版底揚壓力 γw·h：踵端 ／ 趾端', `${n(o.base.upH)} / ${n(o.base.upT)}`, 'tf/m²') : ''}
+    ${o.base.upH > 0 || o.base.upT > 0 ? eq(`版底揚壓力（${o.base.upUni ? '均佈：踵版 γw·Hw1、趾版 γw·Hw2' : '梯形，同 Pb'}）：踵版 ／ 趾版`, `${n(o.base.upH)} / ${n(o.base.upT)}`, 'tf/m²') : ''}
     <p class="note">踵版：w = LV·q0 + D·(q1 + q2) − F·γw·h − q（向下為正，正彎矩上層受拉）；趾版：w = q + F·γw·h − D·q2（向上為正，正彎矩下層受拉）。q 為因數化地盤反力。</p>
     ${o.rc.slice(3).map(rcReport).join('')}
     ${[o.min[2]].map(m => `<h4>(3) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}`;

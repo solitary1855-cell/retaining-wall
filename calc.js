@@ -50,7 +50,7 @@
     qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
     fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, pwRed: 1, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
-    cover: 7.5, dStemN: null, dStemE: null, stemCos: true, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
+    cover: 7.5, dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni', rcVer: 1, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
     preset: '', T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
@@ -292,7 +292,8 @@
       const MqE = mv.t ? (Fq + dFq) * mv.t * z : Mq + dFq * mv.d * z;
       const Wst = (T * z + 0.5 * (S - T) * z * z / h) * gc + 0.5 * (S - T) * z * z / h * gB;
       const Mst = (T * z * z / 2 + 0.5 * (S - T) * z ** 3 / (3 * h)) * gc + 0.5 * (S - T) * z ** 3 / (3 * h) * gB;
-      const Ve = Fe * (1 + rat) + Fw + dFw + Fq + dFq + p.kh * Wst, MeT = MeSoil + Mw + dFw * 0.4 * d + MqE + p.kh * Mst;
+      const kI = p.stemInert === false ? 0 : p.kh;   // 牆身慣性力（中興計算書不計）
+      const Ve = Fe * (1 + rat) + Fw + dFw + Fq + dFq + kI * Wst, MeT = MeSoil + Mw + dFw * 0.4 * d + MqE + kI * Mst;
       // 地震時之 H 為靜態側壓（作用點依變位模式），超載靜態側壓為 LH，其餘為 EQ
       const MHs = mv.t ? Fe * mv.t * z : (mv.s === null ? Me : Fe * mv.s * z), MHq = mv.t ? Fq * mv.t * z : Mq;
       const VEQ = Ve - Fe - Fq - Fw, MEQ = MeT - MHs - MHq - Mw;
@@ -323,7 +324,8 @@
       const k = 2 * r.m * r.Rn / r.fy;
       r.rho = k >= 1 ? 99 : (1 - Math.sqrt(1 - k)) / r.m;
       r.rhoMin = r.rhoMinS; r.rho43 = 4 / 3 * r.rho;
-      r.rhoU = Math.max(r.rho, Math.min(r.rhoMin, r.rho43));
+      r.rhoT2 = z === null ? cf.t2 / 2 : 0;   // 基礎版：需要鋼筋量不小於 ρt/2（中興計算書）
+      r.rhoU = Math.max(r.rho, Math.min(r.rhoMin, r.rho43), r.rhoT2);
       r.Asr = r.rhoU * 100 * r.d; r.Asp = Asp; r.okM = Asp >= r.Asr;
       return r;
     }
@@ -341,7 +343,9 @@
       (X.e > 0 ? Math.max(0, X.qt * (1 - u / X.a)) : Math.max(0, X.qh * (1 - (B - u) / X.a)));
     const NS = 40;
     // 基礎版底面揚壓力（自趾端 u 處）：與穩定分析 Pb 相同之梯形分布，配筋時乘 F 係數
-    const up = u => p.gW * (g.h2 + (hw1 - g.h2) * u / B);
+    // 均佈（中興）：踵版 γw·Hw1、趾版 γw·Hw2；梯形：同 Pb
+    const upUni = p.upMode !== 'trap'; o.base.upUni = upUni;
+    const up = u => upUni ? p.gW * (u >= C + S ? hw1 : g.h2) : p.gW * (g.h2 + (hw1 - g.h2) * u / B);
     o.base.upH = up(B); o.base.upT = up(0);
     // 沿版長逐斷面計算 V、M（s 為自牆面起算距離），回傳牆面值及正負彎矩極值
     // 踵版：w 向下為正（M > 0 上層受拉）；趾版：w 向上為正（M > 0 下層受拉）
