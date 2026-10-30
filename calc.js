@@ -37,9 +37,9 @@
     // 承載層採緊密礫石級配（R-008 附註10：承載力不足時挖除以礫石級配回填）
     gB: 1.9, phiB: 30, cB: 0, gF: 2.1, phiF: 38, cF: 0, gC: 2.4, gW: 1.0,
     qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
-    fc: 210, fy: 4200, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, mvm: 'rotBase',
+    fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
-    cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', kpem: 'mo', deltaP: 0, kpOvr: null, kpeOvr: null,
+    cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
     preset: '', T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
@@ -231,14 +231,15 @@
     // Kp
     // Kp：Rankine 或 Coulomb（承載層 ϕ、δp）；KPE：式(7.3-14)，止滑榫前緣為垂直面、地表水平（θ = α = 0）
     if (!['coulomb', 'ck', 'ckc'].includes(p.kpm)) p.kpm = 'rankine';
-    Q.deltaP = p.kpm === 'rankine' ? 0 : p.deltaP;
+    // δp 直接採牆背摩擦角 δ（常時 Kp 用常時 δ，地震時 KPE 用地震時 δ）；Rankine 不計牆面摩擦
+    Q.deltaP = p.kpm === 'rankine' ? 0 : N.delta;
     N.kpOvr = useOvr(p.kpOvr); Q.kpeOvr = useOvr(p.kpeOvr);
-    N.ck = p.kpm === 'ck' ? ckKp(p.phiF, p.deltaP) : p.kpm === 'ckc' ? ckKpChart(p.phiF, p.deltaP) : null;
-    N.Kp = N.kpOvr ? +p.kpOvr : p.kpm === 'coulomb' ? coulombKp(p.phiF, p.deltaP, 0, 0) : N.ck ? N.ck.Kp : tan(45 + p.phiF / 2) ** 2;
+    N.ck = p.kpm === 'ck' ? ckKp(p.phiF, Q.deltaP) : p.kpm === 'ckc' ? ckKpChart(p.phiF, Q.deltaP) : null;
+    N.Kp = N.kpOvr ? +p.kpOvr : p.kpm === 'coulomb' ? coulombKp(p.phiF, Q.deltaP, 0, 0) : N.ck ? N.ck.Kp : tan(45 + p.phiF / 2) ** 2;
     // KPE：Mononobe-Okabe 式(7.3-14)（δ 同 Kp 方法）；或擬靜態 Rankine（式(7.3-14) 令 δ = θ = α = 0，kh = 0 時即 tan²(45+ϕ/2)）
     // 或 Rankine（非擬靜態）：KPE = tan²(45+ϕ/2)，與常時 Rankine Kp 相同，不計地震對被動土壓之折減
     if (!['rankine', 'rankine0'].includes(p.kpem)) p.kpem = 'mo';
-    Q.deltaPE = p.kpem === 'mo' ? Q.deltaP : 0;
+    Q.deltaPE = p.kpem === 'mo' && p.kpm !== 'rankine' ? Q.delta : 0;
     Q.Kp = Q.kpeOvr ? +p.kpeOvr : p.kpem === 'rankine0' ? tan(45 + p.phiF / 2) ** 2 : moKpe(p.phiF, Q.deltaPE, 0, 0, Q.vphi);
 
     for (const [X, sfx, elim] of [[N, 'n', 6], [Q, 'e', 3]]) stability(X, p, g, sfx, elim);
@@ -278,16 +279,21 @@
     }
     function design(title, z, t, f, Asp, desc) {
       const r = { title, z, t, desc, ...f };
+      // 鋼筋降伏強度：D10 採 fy10，D13 以上採 fy；同一斷面混用時取小值
+      const keys = desc.split('+').filter(k => p.bars[k] && p.bars[k].s > 0);
+      r.fy = Math.min(...keys.map(k => p.bars[k].D <= 10 ? p.fy10 : p.fy));
+      r.m = r.fy / (0.85 * p.fc);
+      r.rhoMinS = p.code === 'hw' ? 14 / r.fy : Math.max(0.8 * Math.sqrt(p.fc) / r.fy, 14 / r.fy);
       r.d = t - p.cover;
       r.Vu = Math.max(f.Vun, f.Vue);
       r.pVc = cf.pv * 0.53 * Math.sqrt(p.fc) * 100 * r.d / 1000;
       r.okV = r.pVc >= r.Vu;
       r.Mu = Math.max(f.Mun, f.Mue, 0);
       r.Rn = r.Mu * 1e5 / (cf.pb * 100 * r.d ** 2);
-      const k = 2 * o.m * r.Rn / p.fy;
-      r.rho = k >= 1 ? 99 : (1 - Math.sqrt(1 - k)) / o.m;
-      r.rhoMin = o.rhoMin; r.rho43 = 4 / 3 * r.rho;
-      r.rhoU = Math.max(r.rho, Math.min(o.rhoMin, r.rho43));
+      const k = 2 * r.m * r.Rn / r.fy;
+      r.rho = k >= 1 ? 99 : (1 - Math.sqrt(1 - k)) / r.m;
+      r.rhoMin = r.rhoMinS; r.rho43 = 4 / 3 * r.rho;
+      r.rhoU = Math.max(r.rho, Math.min(r.rhoMin, r.rho43));
       r.Asr = r.rhoU * 100 * r.d; r.Asp = Asp; r.okM = Asp >= r.Asr;
       return r;
     }

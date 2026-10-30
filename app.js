@@ -10,6 +10,7 @@
   }
   function fix(q) {
     if (!['coulomb', 'ck', 'ckc'].includes(q.kpm)) q.kpm = 'rankine';
+    delete q.deltaP;   // 已移除「被動牆面摩擦角 δp」，改採 δ
     if ('wt' in q) { if (!q.wt && +q.hw2 === 0) q.hw2 = null; delete q.wt; }   // 已移除「基底位於地下水位下」，改由 Hw2 判斷
     return q; }  // 已移除「範例沿用法」
   function save() { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {} }
@@ -98,7 +99,7 @@
     { t: '4. 載重組合（含配筋規範與強度折減因子）', info: 'combo', f: [
       ['code', '配筋規範', '', 'select', [['hw', '公路橋梁設計規範'], ['c112', '112年建築物基礎構造設計規範']]]],
       hint: '係數依所選規範自動帶入。公路橋梁設計規範：第3.23節表3.3。112年建築物基礎構造設計規範：第2.11節規定基礎構材以極限強度法設計時依「建築構造編」辦理，載重組合依112年建築物混凝土結構設計規範表5.3.1及第5.3.6、5.3.7節。組合內容見下表。' },
-    { t: '5. 材料設計強度及保護層', f: [['fc', "混凝土 fc'", 'kgf/cm²'], ['fy', '鋼筋 fy', 'kgf/cm²'], ['cover', "保護層 d'", 'cm']] },
+    { t: '5. 材料設計強度及保護層', f: [['fc', "混凝土 fc'", 'kgf/cm²'], ['fy', '鋼筋 fy（D13 以上）', 'kgf/cm²'], ['fy10', '鋼筋 fy（D10）', 'kgf/cm²'], ['cover', "保護層 d'", 'cm']] },
     { t: '6. 地震係數', f: [
       ['pgaH', '地表水平向尖峰加速度 PGAh', 'g'], ['pgaV', '地表垂直向尖峰加速度 PGAv', 'g'],
       ['khRes', '牆體側向位移完全受限', '', 'bool'], ['=khS', 'kh 建議值', ''], ['=kvS', 'kv 建議值', ''],
@@ -112,13 +113,12 @@
       ['deltaR', '常時牆背摩擦角比 δ/ϕ', ''], ['=dN', '常時 δ', '度'],
       ['deltaRE', '地震時牆背摩擦角比 δ/ϕ', ''], ['=dE', '地震時 δ', '度'],
       ['kam', 'Ka 計算方法', '', 'select', [['coulomb', 'Coulomb'], ['rankine', 'Rankine']]],
-      ['kaOvr', 'Ka 指定值（空白=計算）', '', 'opt'],
-      ['kaeOvr', 'KAE 指定值（空白=計算）', '', 'opt'],
       ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb'], ['ck', 'Caquot-Kerisel（反推）'], ['ckc', 'Caquot-Kerisel（查圖）']]],
       ['kpem', 'KPE 計算方法', '', 'select', [['mo', 'Mononobe-Okabe'], ['rankine', 'Rankine（擬靜態）'], ['rankine0', 'Rankine']]],
-      ['deltaP', '被動牆面摩擦角 δp', '度'], ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt']],
+      ['kaOvr', 'Ka 指定值（空白=計算）', '', 'opt'], ['kaeOvr', 'KAE 指定值（空白=計算）', '', 'opt'],
+      ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt']],
       htmlAfter: 'kpm', html: `<details class="figtog"><summary>圖-解7.3-1（Caquot-Kerisel 土壓力係數）</summary><a href="fig-7-3-1.jpg" target="_blank" rel="noopener" title="開新視窗檢視原尺寸"><img src="fig-7-3-1.jpg" alt="圖-解7.3-1 主動與被動土壓力係數－牆背傾斜" loading="lazy"></a><p class="hint">建築物基礎構造設計規範(112) 圖-解7.3-1（轉錄自 NAVFAC DM7.2, 1986）。Kp = R × Kp(δ/ϕ = −1)：上方曲線為 δ/ϕ = −1 之 Kp（依牆面傾角 θ），左上表為折減係數 R。止滑榫前緣垂直取 θ = 0°。「查圖」採 θ = 0° 曲線數位化值（ϕ ≤ 38°）；「反推」以 tan²(45° + ϕ/2)/R(δ = 0) 計算。</p></details>`,
-      hint: 'Ka — Coulomb：式(7.3-5)，回填土 ϕ2、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp 不宜大於 2ϕ/3。地震時 KPE 依式(7.3-14)，亦可指定。' },
+      hint: 'Ka — Coulomb：式(7.3-5)，回填土 ϕ2、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ1、δp = δ；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp = δ（不宜大於 2ϕ1/3）。地震時 KPE 依式(7.3-14)，亦可指定。' },
     { t: '9. 擋土牆配筋設計', bars: true }
 
   ];
@@ -271,8 +271,8 @@
       ${eq('載重傾角 β = atan(ΣH/ΣV)', n(X.beta), '度')}
       ${(() => { const Y = o.g.Y, hw = Math.min(Y, o.g.h2);
         return hw > 0
-          ? eq(`q = γ2·(Y − hw) + γ2′·hw = ${n(P.gB)} × ${n(Y - hw)} + ${n(o.g.g2s)} × ${n(hw)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m，hw = min(Y, Hw2) = ${n(hw)} m）`, n(X.q), 'tf/m²')
-          : eq(`q = γ2·Df' = ${n(P.gB)} × ${n(Y)}（Df' = Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m）`, n(X.q), 'tf/m²'); })()}
+          ? eq(`q = γ2·(Y − hw) + γ2′·hw = ${n(P.gB)} × ${n(Y - hw)} + ${n(o.g.g2s)} × ${n(hw)}（Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m，hw = min(Y, Hw2) = ${n(hw)} m）`, n(X.q), 'tf/m²')
+          : eq(`q = γ2·Y = ${n(P.gB)} × ${n(Y)}（Y = Df + D1 + D2 = ${n(P.Df)} + ${n(P.D1)} + ${n(P.D2)} = ${n(Y)} m）`, n(X.q), 'tf/m²'); })()}
       ${(() => { const f = v => n(v, 3), t1 = P.cF * X.Nc * X.Fcd * X.Fci, t2 = X.q * X.Nq * X.Fqd * X.Fci, t3 = 0.5 * X.g1 * o.g.B * X.Nr * X.Fqd * X.Fri;
         return eq(`qu = c1·Nc·Fcd·Fci + q·Nq·Fqd·Fqi + ½·${g1sym()}·B·Nγ·Fγd·Fγi<br>　= ${n(P.cF)} × ${n(X.Nc, 1)} × ${f(X.Fcd)} × ${f(X.Fci)} + ${n(X.q)} × ${n(X.Nq, 1)} × ${f(X.Fqd)} × ${f(X.Fci)} + 0.5 × ${n(X.g1)} × ${n(o.g.B)} × ${n(X.Nr, 1)} × ${f(X.Fqd)} × ${f(X.Fri)}<br>　= ${n(t1)} + ${n(t2)} + ${n(t3)}`, n(X.qu), 'tf/m²', true); })()}
       <p class="note">擋土牆為條形基礎（B/L ≈ 0），形狀影響因素 Fcs = Fqs = Fγs = 1.0（表4.3-2），式中省略。</p>
@@ -295,7 +295,7 @@
         return eq(`止滑榫平均有效垂直應力 σ′v,avg = ${gs}·(Y + Kd/2) = ${n(X.gp)} × (${n(Y)} + ${n(Kd)}/2)` + (X.ppWet ? '（地下水位高於止滑榫底，採 γ1′ = γ1 − γw）' : ''), n(X.svAvg), 'tf/m²')
           + eq(`Pp = σ′v,avg·Kp·Kd = ${n(X.svAvg)} × ${n(X.Kp, 3)} × ${n(Kd)}`, n(X.Pp), 'tf'); })()}
       ${eq("L' = B − 2|e|", n(X.Lp), 'm')}
-      ${eq('L1 = min(Kc, Kd/tan(45−ϕ1/2))', n(X.L1), 'm')}
+      ${eq('L1 = min[Kc, Kd/tan(45−ϕ1/2)]', n(X.L1), 'm')}
       ${eq("V1 = L1/L'·ΣV", n(X.V1), 'tf')}
       ${eq('V2 = ΣV − V1', n(X.V2), 'tf')}
       ${eq('ΣHu = V1·tanϕ1 + V2·tan(2ϕ1/3) + (c1/2)·B + 50%·Pp', n(X.Hu), 'tf')}
@@ -314,7 +314,7 @@
       ${eq(`常時 Mu${o.cf.cn.length > 1 ? '（' + o.cf.cn[r.gn].tag + ' 控制）' : ''} ／ 地震時 Mu${o.cf.ce.length > 1 ? '（' + o.cf.ce[r.ge].tag + ' 控制）' : ''}`, n(r.Mun) + ' / ' + n(r.Mue), 'tf·m/m')}
       ${eq('Mu = max(常時, 地震時)', n(r.Mu), 'tf·m/m', true)}
       ${eq('Rn = Mu/(φb·b·d²)', n(r.Rn, 3), 'kgf/cm²')}
-      ${eq("ρ = (1/m)[1 − √(1 − 2mRn/fy)]，m = fy/0.85fc' = " + n(o.m, 3), r.rho > 1 ? '斷面不足' : n(r.rho, 4), '')}
+      ${eq(`ρ = (1/m)[1 − √(1 − 2mRn/fy)]，fy = ${n(r.fy, 0)}，m = fy/0.85fc' = ` + n(r.m, 3), r.rho > 1 ? '斷面不足' : n(r.rho, 4), '')}
       ${eq('ρmin ／ 4ρ/3', n(r.rhoMin, 4) + ' / ' + n(r.rho43, 4), '')}
       ${eq('As = ρ·b·d', n(r.Asr), 'cm²/m', true)}
       ${eq(`As'（${r.desc}）`, n(r.Asp), r.okM ? "As'≥As OK!" : "As'<As NG!", true)}`;
@@ -337,17 +337,17 @@
         `ϕ2 = ${d1(N.phi)}、δ = ${d1(Q.delta)}（地震時）、θ = ${d1(N.theta)}、α = ${d1(N.alpha)}、φ = tan⁻¹[kh/(1−kv)] = ${n(Q.vphi)}°（kv 取 ${Q.kvPhi === 0 ? '0' : n(Q.kvPhi, 3)}）`];
     const pf = `ϕ1 = ${d1(p.phiF)}（承載層）`;
     const kp = N.kpOvr ? ['指定值', '—', '—']
-      : p.kpm === 'coulomb' ? ['Coulomb', mK('P', B_KP), `${pf}、δp = ${d1(p.deltaP)}、θ = α = 0°`]
+      : p.kpm === 'coulomb' ? ['Coulomb', mK('P', B_KP), `${pf}、δp = δ = ${d1(Q.deltaP)}、θ = α = 0°`]
       : p.kpm === 'ckc' ? ['Caquot-Kerisel（查圖），第7.3.3節、圖-解7.3-1', mK('P', `<mi>R</mi><mo>·</mo><msub><mi>K</mi><mi mathvariant="normal">P</mi></msub><mo stretchy="false">(</mo><mi>δ</mi><mo>/</mo><mi>ϕ</mi><mo>=</mo><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo>`) + (N.ck.outChart ? '<br>KP(δ/ϕ=−1) 超出圖框，改以 tan²(45°+ϕ/2)/R(δ=0) 反推' : '<br>KP(δ/ϕ=−1)：圖-解7.3-1 θ = 0° 曲線讀值'),
-          `${pf}、δp = ${d1(p.deltaP)}、δ/ϕ = ${n(N.ck.rat, 3)}、R = ${n(N.ck.R, 3)}（表）、KP(δ/ϕ=−1) = ${n(N.ck.Kp1, 2)}（${N.ck.outChart ? '反推' : '查圖'}）`]
+          `${pf}、δp = δ = ${d1(Q.deltaP)}、δ/ϕ = ${n(N.ck.rat, 3)}、R = ${n(N.ck.R, 3)}（表）、KP(δ/ϕ=−1) = ${n(N.ck.Kp1, 2)}（${N.ck.outChart ? '反推' : '查圖'}）`]
       : p.kpm === 'ck' ? ['Caquot-Kerisel（反推），第7.3.3節、圖-解7.3-1', mK('P', `<mi>R</mi><mo>·</mo><msub><mi>K</mi><mi mathvariant="normal">P</mi></msub><mo stretchy="false">(</mo><mi>δ</mi><mo>/</mo><mi>ϕ</mi><mo>=</mo><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo>`) + '<br>' + `<math displaystyle="true"><mrow><msub><mi>K</mi><mi mathvariant="normal">P</mi></msub><mo stretchy="false">(</mo><mi>δ</mi><mo>/</mo><mi>ϕ</mi><mo>=</mo><mo>−</mo><mn>1</mn><mo stretchy="false">)</mo><mo>=</mo>${mFrac(mTan2('+'), '<mi>R</mi><mo stretchy="false">(</mo><mi>δ</mi><mo>=</mo><mn>0</mn><mo stretchy="false">)</mo>')}</mrow></math>`,
-          `${pf}、δp = ${d1(p.deltaP)}、δ/ϕ = ${n(N.ck.rat, 3)}、R = ${n(N.ck.R, 3)}、KP(δ/ϕ=−1) = ${n(N.ck.Kp1, 3)}`]
+          `${pf}、δp = δ = ${d1(Q.deltaP)}、δ/ϕ = ${n(N.ck.rat, 3)}、R = ${n(N.ck.R, 3)}、KP(δ/ϕ=−1) = ${n(N.ck.Kp1, 3)}`]
       : ['Rankine', mK('P', mTan2('+')), pf];
     const kpe = Q.kpeOvr ? ['指定值', '—', '—']
       : p.kpem === 'rankine0' ? ['Rankine（同常時 Rankine KP，不計地震對被動土壓之折減）', mK('PE', mTan2('+')), pf]
       : p.kpem === 'rankine' ? ['擬靜態 Rankine（式(7.3-14) 令 δ = θ = α = 0；kh = 0 時即 tan²(45° + ϕ/2)）', mK('PE', B_KPER), `${pf}、φ = ${n(Q.vphi)}°`]
       : ['Mononobe-Okabe，式(7.3-14)', mK('PE', B_KPE),
-        `${pf}、δ = ${d1(Q.deltaP)}、θ = α = 0°（止滑榫前緣垂直、地表水平）、φ = ${n(Q.vphi)}°`];
+        `${pf}、δ = ${d1(Q.deltaPE)}、θ = α = 0°（止滑榫前緣垂直、地表水平）、φ = ${n(Q.vphi)}°`];
     const row = (k, nm, r, v) => `<tr><td style="white-space:nowrap">${k}</td><td style="text-align:left;min-width:7em">${nm}</td><td style="text-align:left;min-width:9em">${r[0]}</td><td class="fxc" style="text-align:left">${r[1]}</td><td style="text-align:left">${r[2]}</td><td><b>${n(v, 3)}</b></td></tr>`;
     return `<div class="scroll"><table class="t"><thead><tr><th style="white-space:nowrap">係數</th><th>說明</th><th>計算方法</th><th>公式</th><th>採用參數</th><th>數值</th></tr></thead><tbody>
       ${row('KA', '常時主動（牆背土壤）', ka, N.Ka)}${row('KAE', '地震時主動（牆背土壤）', kae, Q.Kae)}
@@ -356,10 +356,10 @@
   }
   function report() {
     const p = P, N = o.n, Q = o.e, g = o.g;
-    const kpLab = (N.kpOvr ? 'Kp' : p.kpm === 'coulomb' ? `Kp（Coulomb，δp = ${n(p.deltaP, 1)}°）` : p.kpm === 'ckc'
-      ? `Kp = R·Kp(δ/ϕ=−1)（Caquot-Kerisel 查圖，圖-解7.3-1；δp = ${n(p.deltaP, 1)}°，δ/ϕ = ${n(N.ck.rat, 3)}，R = ${n(N.ck.R, 3)}（表），Kp(δ/ϕ=−1) = ${n(N.ck.Kp1, 2)}（${N.ck.outChart ? 'ϕ 超出圖框，以 tan²(45+ϕ/2)/R(0) 反推' : 'θ = 0° 曲線讀值'}））`
+    const kpLab = (N.kpOvr ? 'Kp' : p.kpm === 'coulomb' ? `Kp（Coulomb，δp = δ = ${n(Q.deltaP, 1)}°）` : p.kpm === 'ckc'
+      ? `Kp = R·Kp(δ/ϕ=−1)（Caquot-Kerisel 查圖，圖-解7.3-1；δp = δ = ${n(Q.deltaP, 1)}°，δ/ϕ = ${n(N.ck.rat, 3)}，R = ${n(N.ck.R, 3)}（表），Kp(δ/ϕ=−1) = ${n(N.ck.Kp1, 2)}（${N.ck.outChart ? 'ϕ 超出圖框，以 tan²(45+ϕ/2)/R(0) 反推' : 'θ = 0° 曲線讀值'}））`
       : p.kpm === 'ck'
-      ? `Kp = R·Kp(δ/ϕ=−1)（Caquot-Kerisel 反推，圖-解7.3-1；δp = ${n(p.deltaP, 1)}°，δ/ϕ = ${n(N.ck.rat, 3)}，R = ${n(N.ck.R, 3)}，Kp(δ/ϕ=−1) = tan²(45+ϕ/2)/R(0) = ${n(N.ck.Kp1, 3)}）`
+      ? `Kp = R·Kp(δ/ϕ=−1)（Caquot-Kerisel 反推，圖-解7.3-1；δp = δ = ${n(Q.deltaP, 1)}°，δ/ϕ = ${n(N.ck.rat, 3)}，R = ${n(N.ck.R, 3)}，Kp(δ/ϕ=−1) = tan²(45+ϕ/2)/R(0) = ${n(N.ck.Kp1, 3)}）`
       : 'Kp = tan²(45 + ϕ/2)（Rankine）') + (N.kpOvr ? '（指定值）' : '');
     const kaLab = N.kaOvr ? 'Ka（指定值）' : p.kam === 'rankine'
       ? (N.alpha === 0 ? 'Ka = tan²(45 − ϕ/2)（Rankine，式(7.3-6)）' : 'Ka（Rankine 傾斜地表）')
@@ -387,7 +387,7 @@
     <p class="note">D：靜載重（含踵版上土重、超載重）；H：側向土壓力（含超載側壓）；F：水壓力；EQ：地震力（動態土壓增量、牆體慣性力、動水壓）。${P.code === 'hw' ? '地震時（表3.3 分類Ⅶ）浮力 B 欄 β＝1，靜水壓與揚壓力 F 以 1.3 計入；Westergaard 動水壓屬 EQ。' : ''}</p>
     ${eq('強度折減因子：彎矩 φb ／ 剪力 φv', n(o.cf.pb) + ' / ' + n(o.cf.pv), '')}
     <h3>1.4 材料設計強度</h3>
-    ${eq("混凝土強度 fc'", n(p.fc, 0), 'kgf/cm²')}${eq('鋼筋降伏強度 fy', n(p.fy, 0), 'kgf/cm²')}
+    ${eq("混凝土強度 fc'", n(p.fc, 0), 'kgf/cm²')}${eq('鋼筋降伏強度 fy（D13 以上）', n(p.fy, 0), 'kgf/cm²')}${eq('鋼筋降伏強度 fy（D10）', n(p.fy10, 0), 'kgf/cm²')}
     <h3>1.5 地震係數</h3>
     ${eq('地表水平向 ／ 垂直向尖峰加速度 PGAh ／ PGAv', n(p.pgaH, 3) + ' / ' + n(p.pgaV, 3), 'g')}
     ${eq(`kh 建議值 = ${p.khRes ? '1.5' : '0.5'} × PGAh${p.khRes ? '（側向位移完全受限）' : ''} ／ kv 建議值 = 0.5 × PGAv`, n(o.khS, 3) + ' / ' + n(o.kvS, 3), '')}
@@ -401,7 +401,7 @@
       <tr><td>抗承載</td><td>${n(p.fsb_n, 1)}</td><td>${n(p.fsb_e, 1)}</td></tr></tbody></table></div>
     <p class="note">依建築物基礎構造設計規範(112) 第7.4.1節（滑動）、第7.4.2節（傾覆）、第7.4.3節（支承力）；公路橋梁設計規範 第6.2.8節。</p>
     <h3>1.7 保護層</h3>${eq("保護層厚度 d'", n(p.cover, 1), 'cm')}
-    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${kTable()}${N.ck && !N.ck.inRange ? '<p class="note">※ 承載層 ϕ 超出圖-解7.3-1 表列範圍（10°～45°），以邊界值計算。</p>' : ''}${N.ck && N.ck.outChart ? '<p class="note">※ 承載層 ϕ 大於 38°，圖-解7.3-1 θ = 0° 曲線已超出圖框，Kp(δ/ϕ=−1) 改以 tan²(45+ϕ/2)/R(δ=0) 反推。</p>' : ''}${p.kpm !== 'rankine' && p.deltaP > 2 * p.phiF / 3 ? '<p class="note">※ δp 大於 2ϕ/3，第7.3.3節解說3規定設計採用之牆面摩擦角不宜大於 2ϕ/3。</p>' : ''}
+    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${kTable()}${N.ck && !N.ck.inRange ? '<p class="note">※ 承載層 ϕ 超出圖-解7.3-1 表列範圍（10°～45°），以邊界值計算。</p>' : ''}${N.ck && N.ck.outChart ? '<p class="note">※ 承載層 ϕ 大於 38°，圖-解7.3-1 θ = 0° 曲線已超出圖框，Kp(δ/ϕ=−1) 改以 tan²(45+ϕ/2)/R(δ=0) 反推。</p>' : ''}${p.kpm !== 'rankine' && Q.deltaP > 2 * p.phiF / 3 ? '<p class="note">※ δp = δ 大於 2ϕ1/3，第7.3.3節解說3規定設計採用之牆面摩擦角不宜大於 2ϕ/3。</p>' : ''}
 
     <h2>2. 擋土牆設計尺寸及分析結果</h2>
     <h3>2.1 擋土牆設計尺寸</h3>
@@ -446,7 +446,7 @@
     ${eq(Q.kaeOvr ? `KAE（指定值；式(7.3-12) 計算值 = ${n(Q.KaeCalc, 3)}）` : 'KAE', n(Q.Kae, 3), '', true)}
     ${eq('PAE = ½·γ2·H²·(1−kv)·KAE　式(7.3-11)（水位以下採浸水單位重 γ2′ = γ2 − γw，即 KAE(1−kv)·Σ）', n(Q.Pae), 'tf/m')}
     ${eq('ΔPAE = PAE − PA　式(解7.3-4)', n(Q.dPae), 'tf/m')}
-    ${eq('PAEh = PAE·cos(δ+θ) ／ ΔPAEh', n(Q.Paeh) + ' / ' + n(Q.dPaeh), 'tf')}
+    ${eq('PAEh = PAE·cos(δ+θ) ／ yae', n(Q.Paeh) + ' / ' + n(Q.yae), 'tf, m')}
     ${eq('PAEv = PAE·sin(δ+θ) ／ xae', n(Q.Paev) + ' / ' + n(Q.xae), 'tf, m')}
     ${eq(`合力作用點（${o.mv.name}）` + ({ rotBase: '：H̄ = [PA·yA + ΔPAE·(2H/3)]/PAE　式(解7.3-5)', slide: '：H̄ = [PA(0.42H) + ΔPAE(0.48H)]/PAE　式(解7.3-7)', rotTop: '：H̄ = 0.55H' }[P.mvm] || ''), n(Q.yae), 'm', true)}
     ${P.mvm === 'rotBase' ? `<p class="note">yA = ${n(N.ya)} m 為靜態主動土壓力實際形心（無地下水時即 H/3）。</p>` : ''}
@@ -461,7 +461,7 @@
     <p>1. 牆身與基礎交界為剛性區。2. 牆身、趾版及踵版視為懸臂梁（公路橋梁設計規範 6.2.2、6.2.3）。
     3. 地震時土壓動態增量作用點依牆體變位模式（${o.mv.name}，第7.3.4節解說2，以斷面深度 z 取代 H），並計入牆身慣性力。4. 基礎版依地盤反力分 20 等分條帶積分；配筋時地盤反力以因數化載重（各分項乘載重係數）重新計算。
     5. 載重組合（${o.cf.name}）：常時 ${o.cf.combN}；地震時 ${o.cf.combE}。${o.cf.note ? o.cf.note + (P.qsType === 'D' ? '本案超載視為永久載重，垂直分量歸 D、側壓歸 H。' : '') : ''}多組組合時取最不利者。</p>
-    ${eq("m = fy/0.85fc'", n(o.m, 3), '')}${eq('ρmin', n(o.rhoMin, 4), '')}
+    ${eq("m = fy/0.85fc'（D13 以上）", n(o.m, 3), '')}${eq('ρmin（D13 以上）', n(o.rhoMin, 4), '')}<p class="note">主筋含 D10 之斷面以 fy = ${n(p.fy10, 0)} kgf/cm² 計算 m 與 ρmin。</p>
     <h3>5.2 牆身設計</h3>${o.rc.slice(0, 3).map(rcReport).join('')}
     ${o.min.slice(0, 2).map((m, i) => `<h4>(${i + 4}) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}
     <h3>5.3 基礎版設計</h3>
