@@ -451,6 +451,7 @@
     ${eq(`合力作用點（${o.mv.name}）` + ({ rotBase: '：H̄ = [PA·yA + ΔPAE·(2H/3)]/PAE　式(解7.3-5)', slide: '：H̄ = [PA(0.42H) + ΔPAE(0.48H)]/PAE　式(解7.3-7)', rotTop: '：H̄ = 0.55H' }[P.mvm] || ''), n(Q.yae), 'm', true)}
     ${P.mvm === 'rotBase' ? `<p class="note">yA = ${n(N.ya)} m 為靜態主動土壓力實際形心（無地下水時即 H/3）。</p>` : ''}
     ${eq('PQEh（超載）／ yqe', n(Q.Pqeh) + ' / ' + n(Q.yqe), 'tf, m')}
+    ${eq('PQEv（超載）／ xqe', n(Q.Pqev) + ' / ' + n(Q.xqe), 'tf, m')}
     <p class="note">依第7.3.7節第1款，均布超載折算為等值填土高度計算側壓，故地震時超載以 KAE 計算，其動態增量作用點比照 ΔPAE 之變位模式取用。</p>
     ${eq('PWE（含動水壓增量 ΔPWE = (7/12)·kh·γw·Hw1²，作用於 0.4Hw1，第7.3.6節解說3 式(解7.3-8)、(解7.3-9)）／ ywe', n(Q.Pwe) + ' / ' + n(Q.ywe), 'tf, m')}
     <h4>d. 作用力總表</h4><div class="sidefig"><div class="sf-main">${forceTable(o.items, Q.ext, 'e')}</div><div class="sf-fig">${RWDraw.blocks()}</div></div>
