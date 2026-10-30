@@ -117,7 +117,7 @@
       ['kpm', 'Kp 計算方法', '', 'select', [['rankine', 'Rankine'], ['coulomb', 'Coulomb'], ['ck', 'Caquot-Kerisel（反推）'], ['ckc', 'Caquot-Kerisel（查圖）']]],
       ['kpem', 'KPE 計算方法', '', 'select', [['mo', 'Mononobe-Okabe'], ['rankine', 'Rankine（擬靜態）'], ['rankine0', 'Rankine']]],
       ['deltaP', '被動牆面摩擦角 δp', '度'], ['kpOvr', 'Kp 指定值（空白=計算）', '', 'opt'], ['kpeOvr', 'KPE 指定值（空白=計算）', '', 'opt']],
-      html: `<details class="figtog"><summary>圖-解7.3-1（Caquot-Kerisel 土壓力係數，點此展開／收合）</summary><a href="fig-7-3-1.jpg" target="_blank" rel="noopener" title="開新視窗檢視原尺寸"><img src="fig-7-3-1.jpg" alt="圖-解7.3-1 主動與被動土壓力係數－牆背傾斜" loading="lazy"></a><p class="hint">建築物基礎構造設計規範(112) 圖-解7.3-1（轉錄自 NAVFAC DM7.2, 1986）。Kp = R × Kp(δ/ϕ = −1)：上方曲線為 δ/ϕ = −1 之 Kp（依牆面傾角 θ），左上表為折減係數 R。止滑榫前緣垂直取 θ = 0°。「查圖」採 θ = 0° 曲線數位化值（ϕ ≤ 38°）；「反推」以 tan²(45° + ϕ/2)/R(δ = 0) 計算。</p></details>`,
+      htmlAfter: 'kpm', html: `<details class="figtog"><summary>圖-解7.3-1（Caquot-Kerisel 土壓力係數，點此展開／收合）</summary><a href="fig-7-3-1.jpg" target="_blank" rel="noopener" title="開新視窗檢視原尺寸"><img src="fig-7-3-1.jpg" alt="圖-解7.3-1 主動與被動土壓力係數－牆背傾斜" loading="lazy"></a><p class="hint">建築物基礎構造設計規範(112) 圖-解7.3-1（轉錄自 NAVFAC DM7.2, 1986）。Kp = R × Kp(δ/ϕ = −1)：上方曲線為 δ/ϕ = −1 之 Kp（依牆面傾角 θ），左上表為折減係數 R。止滑榫前緣垂直取 θ = 0°。「查圖」採 θ = 0° 曲線數位化值（ϕ ≤ 38°）；「反推」以 tan²(45° + ϕ/2)/R(δ = 0) 計算。</p></details>`,
       hint: 'Ka — Coulomb：式(7.3-5)，回填土 ϕ2、δ、牆背 θ、地表 α；Rankine：式(7.3-6) tan²(45−ϕ/2)（規範限地表水平、牆背垂直、不計牆面摩擦；地表傾斜時採 Rankine 傾斜地表式，合力平行地表）；亦可指定 Caquot-Kerisel 查圖值。地震時 KAE 依式(7.3-12)，亦可指定。<br>Kp — Rankine：tan²(45+ϕ/2)；Coulomb：承載層 ϕ、δp（建議 ≤ ϕ/3）；Caquot-Kerisel：依第7.3.3節，以圖-解7.3-1（NAVFAC DM7.2）折減係數 R 計算，Kp = R·Kp(δ/ϕ=−1)，δp 不宜大於 2ϕ/3。地震時 KPE 依式(7.3-14)，亦可指定。' },
     { t: '9. 擋土牆配筋設計', bars: true }
 
@@ -131,7 +131,7 @@
       if (!g.plain) d.innerHTML = `<summary>${g.t}</summary>`;
       const box = document.createElement('div'); box.className = 'fields';
       if (g.hint) box.insertAdjacentHTML('beforeend', `<p class="hint">${g.hint}</p>`);
-      if (g.html) box.insertAdjacentHTML('beforeend', g.html);
+      if (g.html && !g.htmlAfter) box.insertAdjacentHTML('beforeend', g.html);
       if (g.info && !g.f) {
         box.insertAdjacentHTML('beforeend', `<div id="${g.info}"></div>`);
       } else if (g.bars) {
@@ -155,6 +155,7 @@
           else if (type === 'text') ctl = `<input id="${id}" data-k="${k}" data-type="text" value="${P[k] ?? ''}" style="text-align:left">`;
           else ctl = `<input id="${id}" data-k="${k}" ${type === 'opt' ? 'data-type="opt"' : ''} inputmode="decimal" value="${fmtIn(P[k])}">`;
           box.insertAdjacentHTML('beforeend', `<div class="f${type === 'select' ? ' wide' : ''}"><label for="${id}">${k.startsWith('=') && lab.includes(' = ') ? lab.replace(/ = (.*)$/, '<span class="rel">= $1</span>') : lab}</label>${ctl}${type === 'select' ? '' : `<span class="u">${unit}</span>`}</div>`);
+          if (g.html && g.htmlAfter === k) box.insertAdjacentHTML('beforeend', g.html);
         }
         if (g.info) box.insertAdjacentHTML('beforeend', `<div id="${g.info}"></div><p class="hint">載重係數與強度折減因子依所選配筋規範自動帶入，免輸入。</p>`);
       }
