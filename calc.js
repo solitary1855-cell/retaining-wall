@@ -39,7 +39,7 @@
     qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
     fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
-    cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
+    cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
     preset: '', T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
@@ -233,7 +233,7 @@
     if (!['coulomb', 'ck', 'ckc'].includes(p.kpm)) p.kpm = 'rankine';
     // δp 直接採牆背摩擦角 δ（常時 Kp 用常時 δ，地震時 KPE 用地震時 δ）；Rankine 不計牆面摩擦
     // 被動牆面摩擦角 δp：以牆面摩擦角比 δ/ϕ 乘承載層 ϕ1 計算（常時、地震時分別）
-    o.dpN = p.deltaR * p.phiF; o.dpE = p.deltaRE * p.phiF;
+    o.dpN = (p.deltaRP ?? p.deltaR) * p.phiF; o.dpE = (p.deltaRPE ?? p.deltaRE) * p.phiF;
     Q.deltaP = p.kpm === 'rankine' ? 0 : o.dpN;
     N.kpOvr = useOvr(p.kpOvr); Q.kpeOvr = useOvr(p.kpeOvr);
     N.ck = p.kpm === 'ck' ? ckKp(p.phiF, Q.deltaP) : p.kpm === 'ckc' ? ckKpChart(p.phiF, Q.deltaP) : null;
