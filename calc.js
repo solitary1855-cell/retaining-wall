@@ -64,6 +64,15 @@
     const row = r => rat >= -0.7 ? lerp(CK_RAT, r, rat) : lerp([-1, -0.7], [1, r[0]], rat);
     return lerp(CK_PHI, CK_R.map(row), phi);
   }
+  // 圖-解7.3-1 被動曲線 θ = 0°、δ/ϕ = −1 之 Kp 數位化值（ϕ = 0～38°，每 1°；ϕ > 38° 曲線超出圖框）
+  const CK_CHART0 = [1.0, 1.06, 1.12, 1.18, 1.24, 1.3, 1.37, 1.44, 1.52, 1.6, 1.69, 1.78, 1.88, 1.98, 2.1, 2.22, 2.35, 2.5, 2.66, 2.83, 3.02, 3.22, 3.45, 3.71, 3.98, 4.29, 4.64, 5.02, 5.46, 5.94, 6.48, 7.09, 7.78, 8.56, 9.44, 10.44, 11.59, 12.9, 14.39];
+  function ckKpChart(phi, delta) {
+    const b = ckKp(phi, delta);
+    if (phi < 0 || phi > 38) return { ...b, chart: true, outChart: true };
+    const i = Math.min(37, Math.floor(phi)), t = phi - i;
+    const Kp1 = Math.exp(Math.log(CK_CHART0[i]) * (1 - t) + Math.log(CK_CHART0[i + 1]) * t);   // 對數刻度內插
+    return { ...b, Kp1, Kp: b.R * Kp1, chart: true, outChart: false };
+  }
   function ckKp(phi, delta) {
     const ph = Math.min(45, Math.max(10, phi)), rat = -Math.min(1, Math.abs(delta) / ph);
     const R = ckR(ph, rat), R0 = ckR(ph, 0), Kp1 = tan(45 + ph / 2) ** 2 / R0;
@@ -221,11 +230,11 @@
 
     // Kp
     // Kp：Rankine 或 Coulomb（承載層 ϕ、δp）；KPE：式(7.3-14)，止滑榫前緣為垂直面、地表水平（θ = α = 0）
-    if (!['coulomb', 'ck'].includes(p.kpm)) p.kpm = 'rankine';
+    if (!['coulomb', 'ck', 'ckc'].includes(p.kpm)) p.kpm = 'rankine';
     Q.deltaP = p.kpm === 'rankine' ? 0 : p.deltaP;
     N.kpOvr = useOvr(p.kpOvr); Q.kpeOvr = useOvr(p.kpeOvr);
-    N.ck = p.kpm === 'ck' ? ckKp(p.phiF, p.deltaP) : null;
-    N.Kp = N.kpOvr ? +p.kpOvr : p.kpm === 'coulomb' ? coulombKp(p.phiF, p.deltaP, 0, 0) : p.kpm === 'ck' ? N.ck.Kp : tan(45 + p.phiF / 2) ** 2;
+    N.ck = p.kpm === 'ck' ? ckKp(p.phiF, p.deltaP) : p.kpm === 'ckc' ? ckKpChart(p.phiF, p.deltaP) : null;
+    N.Kp = N.kpOvr ? +p.kpOvr : p.kpm === 'coulomb' ? coulombKp(p.phiF, p.deltaP, 0, 0) : N.ck ? N.ck.Kp : tan(45 + p.phiF / 2) ** 2;
     // KPE：Mononobe-Okabe 式(7.3-14)（δ 同 Kp 方法）；或擬靜態 Rankine（式(7.3-14) 令 δ = θ = α = 0，kh = 0 時即 tan²(45+ϕ/2)）
     // 或 Rankine（非擬靜態）：KPE = tan²(45+ϕ/2)，與常時 Rankine Kp 相同，不計地震對被動土壓之折減
     if (!['rankine', 'rankine0'].includes(p.kpem)) p.kpem = 'mo';
@@ -366,5 +375,5 @@
     X.FSs = X.Hu / X.SH; X.okS = X.FSs >= X.fss;
   }
 
-  root.RW = { compute, DEFAULTS, CODES, BARS, NTAB, MVM, moKae, moKpe, ckKp };
+  root.RW = { compute, DEFAULTS, CODES, BARS, NTAB, MVM, moKae, moKpe, ckKp, ckKpChart };
 })(typeof window !== 'undefined' ? window : globalThis);
