@@ -50,7 +50,7 @@
     qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
     fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, pwRed: 1, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
-    cover: 7.5, dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni', rcVer: 1, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
+    cover: 7.5, dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni', heelSino: true, rcVer: 1, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
     preset: '', T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
@@ -387,8 +387,15 @@
     const tb = (D2 + D1) * 100;
     const fPos = (n, e, nu, eu) => ({ Vn: n.V, Mn: n.M, Ve: e.V, Me: e.M, Vun: nu.V, Mun: nu.M, Vue: eu.V, Mue: eu.M, gn: nu.i, ge: eu.i });
     const fNeg = (n, e, nu, eu) => ({ Vn: n.V, Mn: n.Mneg, Ve: e.V, Me: e.Mneg, Vun: nu.V, Mun: nu.Mneg, Vue: eu.V, Mue: eu.Mneg, gn: nu.iN, ge: eu.iN, rev: true });
-    o.rc.push(Object.assign(design('(1) 基礎踵端上層鋼筋 S4、S6（負彎矩，上層受拉）', null, tb, fPos(hn, he, hnu, heu), As('S4'), 'S4'), { lab: '踵版上層 S4' }));
-    o.rc.push(Object.assign(design('(2) 基礎踵端下層鋼筋 S5、S7（反向彎矩，下層受拉）', null, tb, fNeg(hn, he, hnu, heu), As('S5'), 'S5'), { lab: '踵版下層 S5' }));
+    // 踵版配筋層：中興計算書以 M = ∫(地盤反力 − 版上載重)·力臂，最大值配頂層筋、最小值（取絕對值）配底層筋
+    o.heelSino = p.heelSino !== false;
+    if (o.heelSino) {
+      o.rc.push(Object.assign(design('(1) 基礎踵端頂層鋼筋 S4、S6（淨載重向上之彎矩，依中興計算書配頂層）', null, tb, fNeg(hn, he, hnu, heu), As('S4'), 'S4'), { lab: '踵版頂層 S4' }));
+      o.rc.push(Object.assign(design('(2) 基礎踵端底層鋼筋 S5、S7（淨載重向下之彎矩，依中興計算書配底層）', null, tb, fPos(hn, he, hnu, heu), As('S5'), 'S5'), { lab: '踵版底層 S5' }));
+    } else {
+      o.rc.push(Object.assign(design('(1) 基礎踵端上層鋼筋 S4、S6（淨載重向下，上層受拉）', null, tb, fPos(hn, he, hnu, heu), As('S4'), 'S4'), { lab: '踵版上層 S4' }));
+      o.rc.push(Object.assign(design('(2) 基礎踵端下層鋼筋 S5、S7（淨載重向上，下層受拉）', null, tb, fNeg(hn, he, hnu, heu), As('S5'), 'S5'), { lab: '踵版下層 S5' }));
+    }
     o.rc.push(Object.assign(design('(3) 基礎趾端下層鋼筋 S5、S7（正彎矩，下層受拉）', null, tb, fPos(tn, te, tnu, teu), As('S5'), 'S5'), { lab: '趾版下層 S5' }));
     o.rc.push(Object.assign(design('(4) 基礎趾端上層鋼筋 S4、S6（反向彎矩，上層受拉）', null, tb, fNeg(tn, te, tnu, teu), As('S4'), 'S4'), { lab: '趾版上層 S4' }));
     const taS = (T + S) / 2 * 100;
