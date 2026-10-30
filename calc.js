@@ -50,7 +50,7 @@
     qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
     fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, pwRed: 1, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
-    cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
+    cover: 7.5, dStemN: null, dStemE: null, stemCos: true, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
     preset: '', T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
@@ -269,7 +269,15 @@
     // ---------- 配筋 ----------
     const bar = k => { const b = p.bars[k]; const Ab = BARS[b.D] || 0; return { Ab, As: b.s > 0 ? Ab * 100 / b.s : 0 }; };
     o.bar = {}; for (const k of Object.keys(p.bars)) o.bar[k] = bar(k);
-    const KAH = N.Ka * cos(N.incl), KAEH = Q.Kae * (1 - kvU) * cos(Q.inclE);
+    // 牆身配筋用土壓係數：可另指定設計用 δ/ϕ2（空白＝同穩定分析）及是否取水平分量 cos(δ+θ)
+    const sk = o.stemK = { cos: p.stemCos !== false };
+    sk.ovrN = useOvr(p.dStemN); sk.ovrE = useOvr(p.dStemE);
+    sk.dN = sk.ovrN ? +p.dStemN * N.phi : N.delta; sk.dE = sk.ovrE ? +p.dStemE * N.phi : Q.delta;
+    sk.Ka = N.kaOvr || p.kam === 'rankine' || !sk.ovrN ? N.Ka : coulombKa(N.phi, sk.dN, N.theta, N.alpha);
+    sk.incl = N.kaOvr || p.kam === 'rankine' ? N.incl : sk.dN + N.theta;
+    sk.Kae = Q.kaeOvr || rkE || !sk.ovrE ? Q.Kae : moKae(N.phi, sk.dE, N.theta, N.alpha, Q.vphi);
+    sk.inclE = Q.kaeOvr || rkE ? Q.inclE : sk.dE + N.theta;
+    const KAH = sk.Ka * (sk.cos ? cos(sk.incl) : 1), KAEH = sk.Kae * (1 - kvU) * (sk.cos ? cos(sk.inclE) : 1);
     o.KAH = KAH; o.KAEH = KAEH; o.m = p.fy / (0.85 * p.fc);
     const zw = Math.max(0, p.H - hw1);
     function stem(z) {
@@ -277,8 +285,8 @@
       const Fe = KAH * (gB * m * m / 2 + gB * m * d + gp * d * d / 2);
       const Me = KAH * (gB * m * m / 2 * (d + m / 3) + gB * m * d * d / 2 + gp * d ** 3 / 6);
       const Fw = p.gW * d * d / 2, Mw = p.gW * d ** 3 / 6;
-      const Fq = p.qs * N.Ka * z, Mq = p.qs * N.Ka * z * z / 2;
-      const rat = KAEH / KAH - 1, dFq = (p.qs * Q.Kae * (1 - kvU) - p.qs * N.Ka) * z, dFw = pwRed * 7 / 12 * p.kh * p.gW * d * d;
+      const Fq = p.qs * sk.Ka * z, Mq = p.qs * sk.Ka * z * z / 2;
+      const rat = KAEH / KAH - 1, dFq = (p.qs * sk.Kae * (1 - kvU) - p.qs * sk.Ka) * z, dFw = pwRed * 7 / 12 * p.kh * p.gW * d * d;
       // 斷面以上土壓之作用點依變位模式（z 取代 H）
       const MeSoil = mv.t ? Fe * (1 + rat) * mv.t * z : (mv.s === null ? Me : Fe * mv.s * z) + Fe * rat * mv.d * z;
       const MqE = mv.t ? (Fq + dFq) * mv.t * z : Mq + dFq * mv.d * z;
@@ -331,9 +339,26 @@
     o.base = { tav, q1, q2, q0 };
     const pres = (u, X) => Math.abs(X.e) <= B / 6 ? X.qt + (X.qh - X.qt) * u / B :
       (X.e > 0 ? Math.max(0, X.qt * (1 - u / X.a)) : Math.max(0, X.qh * (1 - (B - u) / X.a)));
-    const NS = 20;
-    function heel(X, f = { D: 1, LV: 1 }) { let V = 0, M = 0; const dx = E / NS; for (let i = 1; i <= NS; i++) { const x = (i - .5) * dx; const w = f.LV * q0 + f.D * (q1 + q2) - pres(B - x, X); V += w * dx; M += w * dx * (E - x); } return { V, M }; }
-    function toe(X, f = { D: 1 }) { let V = 0, M = 0; const dx = C / NS; for (let i = 1; i <= NS; i++) { const u = (i - .5) * dx; const w = pres(u, X) - f.D * q2; V += w * dx; M += w * dx * (C - u); } return { V, M }; }
+    const NS = 40;
+    // 基礎版底面揚壓力（自趾端 u 處）：與穩定分析 Pb 相同之梯形分布，配筋時乘 F 係數
+    const up = u => p.gW * (g.h2 + (hw1 - g.h2) * u / B);
+    o.base.upH = up(B); o.base.upT = up(0);
+    // 沿版長逐斷面計算 V、M（s 為自牆面起算距離），回傳牆面值及正負彎矩極值
+    // 踵版：w 向下為正（M > 0 上層受拉）；趾版：w 向上為正（M > 0 下層受拉）
+    function prof(L, wAt) {
+      const dx = L / NS, w = []; for (let i = 0; i < NS; i++) w.push(wAt((i + .5) * dx));
+      let Mmax = 0, Mmin = 0, Vmax = 0, V0 = 0, M0 = 0;
+      for (let j = 0; j < NS; j++) {
+        let V = 0, M = 0; const s0 = j * dx;
+        for (let i = j; i < NS; i++) { V += w[i] * dx; M += w[i] * dx * ((i + .5) * dx - s0); }
+        if (j === 0) { V0 = V; M0 = M; }
+        Mmax = Math.max(Mmax, M); Mmin = Math.min(Mmin, M); Vmax = Math.max(Vmax, Math.abs(V));
+      }
+      return { V: Vmax, V0, M: Mmax, Mneg: -Mmin, M0 };
+    }
+    // s：自牆面（踵版自牆背、趾版自牆前）起算；換算為自趾端 u
+    const heel = (X, f = { D: 1, LV: 1, F: 1 }) => prof(E, s => f.LV * q0 + f.D * (q1 + q2) - f.F * up(C + S + s) - pres(C + S + s, X));
+    const toe = (X, f = { D: 1, F: 1 }) => prof(C, s => pres(C - s, X) + f.F * up(C - s) - f.D * q2);
     // 因數化地盤反力：各分項載重乘係數後重算偏心與反力
     function factored(comp, f) {
       let SV = 0, Mr = 0, Md = 0;
@@ -346,12 +371,22 @@
       return X;
     }
     o.nu = cf.cn.map(f => factored(N.comp, f)); o.eu = cf.ce.map(f => factored(Q.comp, f));
+    // 多組組合包絡：正彎矩、反向彎矩、剪力分別取最大
+    const envB = list => {
+      const pick = key => list.reduce((b, r, i) => r[key] > list[b][key] ? i : b, 0);
+      const iM = pick('M'), iN = pick('Mneg'), iV = pick('V');
+      return { M: list[iM].M, Mneg: list[iN].Mneg, V: list[iV].V, i: iM, iN, iv: iV };
+    };
     const hn = heel(N), he = heel(Q), tn = toe(N), te = toe(Q);
-    const hnu = env(cf.cn.map((f, i) => heel(o.nu[i], f))), heu = env(cf.ce.map((f, i) => heel(o.eu[i], f)));
-    const tnu = env(cf.cn.map((f, i) => toe(o.nu[i], f))), teu = env(cf.ce.map((f, i) => toe(o.eu[i], f)));
+    const hnu = envB(cf.cn.map((f, i) => heel(o.nu[i], f))), heu = envB(cf.ce.map((f, i) => heel(o.eu[i], f)));
+    const tnu = envB(cf.cn.map((f, i) => toe(o.nu[i], f))), teu = envB(cf.ce.map((f, i) => toe(o.eu[i], f)));
     const tb = (D2 + D1) * 100;
-    o.rc.push(design('(1) 基礎踵端鋼筋 S4、S6（上層筋）', null, tb, { Vn: hn.V, Mn: hn.M, Ve: he.V, Me: he.M, Vun: hnu.V, Mun: hnu.M, Vue: heu.V, Mue: heu.M, gn: hnu.i, ge: heu.i }, As('S4'), 'S4'));
-    o.rc.push(design('(2) 基礎趾端鋼筋 S5、S7（下層筋）', null, tb, { Vn: tn.V, Mn: tn.M, Ve: te.V, Me: te.M, Vun: tnu.V, Mun: tnu.M, Vue: teu.V, Mue: teu.M, gn: tnu.i, ge: teu.i }, As('S5'), 'S5'));
+    const fPos = (n, e, nu, eu) => ({ Vn: n.V, Mn: n.M, Ve: e.V, Me: e.M, Vun: nu.V, Mun: nu.M, Vue: eu.V, Mue: eu.M, gn: nu.i, ge: eu.i });
+    const fNeg = (n, e, nu, eu) => ({ Vn: n.V, Mn: n.Mneg, Ve: e.V, Me: e.Mneg, Vun: nu.V, Mun: nu.Mneg, Vue: eu.V, Mue: eu.Mneg, gn: nu.iN, ge: eu.iN, rev: true });
+    o.rc.push(Object.assign(design('(1) 基礎踵端上層鋼筋 S4、S6（負彎矩，上層受拉）', null, tb, fPos(hn, he, hnu, heu), As('S4'), 'S4'), { lab: '踵版上層 S4' }));
+    o.rc.push(Object.assign(design('(2) 基礎踵端下層鋼筋 S5、S7（反向彎矩，下層受拉）', null, tb, fNeg(hn, he, hnu, heu), As('S5'), 'S5'), { lab: '踵版下層 S5' }));
+    o.rc.push(Object.assign(design('(3) 基礎趾端下層鋼筋 S5、S7（正彎矩，下層受拉）', null, tb, fPos(tn, te, tnu, teu), As('S5'), 'S5'), { lab: '趾版下層 S5' }));
+    o.rc.push(Object.assign(design('(4) 基礎趾端上層鋼筋 S4、S6（反向彎矩，上層受拉）', null, tb, fNeg(tn, te, tnu, teu), As('S4'), 'S4'), { lab: '趾版上層 S4' }));
     const taS = (T + S) / 2 * 100;
     o.min = [
       { k: 'S8', title: '暴露面垂直鋼筋 S8（單層）', rho: cf.s8, Asr: cf.s8 * 100 * taS / 2, Asp: As('S8'), basis: `ρt·b·ta/2，ta = ${taS.toFixed(1)} cm` },
