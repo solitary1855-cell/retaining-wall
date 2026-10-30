@@ -108,7 +108,7 @@
     { t: '6. 地震係數', f: [
       ['pgaH', '地表水平向尖峰加速度 PGAh', 'g'], ['pgaV', '地表垂直向尖峰加速度 PGAv', 'g'],
       ['khRes', '牆體側向位移完全受限', '', 'bool'], ['=khS', 'kh 建議值', ''], ['=kvS', 'kv 建議值', ''],
-      ['kh', '水平向地震係數 kh（採用）', ''], ['kv', '垂直向地震係數 kv（採用，向下為正）', ''], ['pwRed', '牆背動水壓折減係數', ''], ['kvPhi0', '計算 φ 時取 kv = 0', '', 'bool'],
+      ['kh', '水平向地震係數 kh（採用）', ''], ['kv', '垂直向地震係數 kv（採用，向下為正）', ''], ['pwRed', '牆背動水壓折減係數|基礎規範第7.3.6節解說 4', ''], ['kvPhi0', '計算 φ 時取 kv = 0', '', 'bool'],
       ['mvm', '牆體變位模式', '', 'select', [['rotBase', '對牆底旋轉'], ['slide', '滑移'], ['rotTop', '對牆頂旋轉']]]],
       hint: '基礎規範(112) 第7.3.4節解說3：kh 取地表水平向尖峰加速度之半，側向位移完全受限取 1.5 倍；kv 取垂直向之半（本表以向下為正），遠距離地震可令 kv = 0。牆背動水壓 ΔPwe = 折減係數 × (7/12)·kh·γw·Hw1²，第7.3.6節解說4 土側受限水可取 0.7。可參考建築物耐震設計規範設計地震（475年回歸期）EPA。變位模式決定動態土壓力作用點（解說2）。' },
     { t: '7. 安全係數', f: [
@@ -158,7 +158,7 @@
           else if (type === 'bool') ctl = `<select id="${id}" data-k="${k}" data-type="bool"><option value="1" ${P[k] ? 'selected' : ''}>是</option><option value="0" ${!P[k] ? 'selected' : ''}>否</option></select>`;
           else if (type === 'text') ctl = `<input id="${id}" data-k="${k}" data-type="text" value="${P[k] ?? ''}" style="text-align:left">`;
           else ctl = `<input id="${id}" data-k="${k}" ${type === 'opt' ? 'data-type="opt"' : ''} inputmode="decimal" value="${fmtIn(P[k])}">`;
-          box.insertAdjacentHTML('beforeend', `<div class="f${type === 'select' ? ' wide' : ''}"><label for="${id}">${k.startsWith('=') && lab.includes(' = ') ? lab.replace(/ = (.*)$/, '<span class="rel">= $1</span>') : lab}</label>${ctl}${type === 'select' ? '' : `<span class="u">${unit}</span>`}</div>`);
+          box.insertAdjacentHTML('beforeend', `<div class="f${type === 'select' ? ' wide' : ''}"><label for="${id}">${lab.includes('|') ? lab.replace(/\|(.*)$/, '<span class="rel">$1</span>') : k.startsWith('=') && lab.includes(' = ') ? lab.replace(/ = (.*)$/, '<span class="rel">= $1</span>') : lab}</label>${ctl}${type === 'select' ? '' : `<span class="u">${unit}</span>`}</div>`);
           if (g.html && g.htmlAfter === k) box.insertAdjacentHTML('beforeend', g.html);
         }
         if (g.info) box.insertAdjacentHTML('beforeend', `<div id="${g.info}"></div><p class="hint">載重係數與強度折減因子依所選配筋規範自動帶入，免輸入。</p>`);
