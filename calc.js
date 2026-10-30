@@ -368,7 +368,9 @@
     X.Fqd = p.phiF >= 10 ? 1 + 0.1 * g.Y / B * kp : 1;
     X.Fci = (1 - X.beta / 90) ** 2;
     X.Fri = p.phiF >= 10 ? Math.max(0, 1 - X.beta / p.phiF) ** 2 : 0;
-    X.qu = p.cF * X.Nc * X.Fcd * X.Fci + X.q * X.Nq * X.Fqd * X.Fci + 0.5 * X.g1 * B * X.Nr * X.Fqd * X.Fri;
+    // 第三項採有效寬度 B' = B − 2|e|（基礎規範第4.3.2節解說，Meyerhof 有效面積法）
+    X.Bp = Math.max(0, B - 2 * Math.abs(X.e));
+    X.qu = p.cF * X.Nc * X.Fcd * X.Fci + X.q * X.Nq * X.Fqd * X.Fci + 0.5 * X.g1 * X.Bp * X.Nr * X.Fqd * X.Fri;
     X.a = Math.min(B, 3 * (B / 2 - Math.abs(X.e)));
     if (Math.abs(X.e) <= B / 6) { X.qt = X.SV / B * (1 + 6 * X.e / B); X.qh = X.SV / B * (1 - 6 * X.e / B); }
     else if (X.e > 0) { X.qt = 2 * X.SV / (3 * (B / 2 - X.e)); X.qh = 0; }
