@@ -108,9 +108,9 @@
     { t: '6. 地震係數', f: [
       ['pgaH', '地表水平向尖峰加速度 PGAh', 'g'], ['pgaV', '地表垂直向尖峰加速度 PGAv', 'g'],
       ['khRes', '牆體側向位移完全受限', '', 'bool'], ['=khS', 'kh 建議值', ''], ['=kvS', 'kv 建議值', ''],
-      ['kh', '水平向地震係數 kh（採用）', ''], ['kv', '垂直向地震係數 kv（採用）', ''], ['kvPhi0', '計算 φ 時取 kv = 0', '', 'bool'],
+      ['kh', '水平向地震係數 kh（採用）', ''], ['kv', '垂直向地震係數 kv（採用，向下為正）', ''], ['pwRed', '牆背動水壓折減係數', ''], ['kvPhi0', '計算 φ 時取 kv = 0', '', 'bool'],
       ['mvm', '牆體變位模式', '', 'select', [['rotBase', '對牆底旋轉'], ['slide', '滑移'], ['rotTop', '對牆頂旋轉']]]],
-      hint: '基礎規範(112) 第7.3.4節解說3：kh 取地表水平向尖峰加速度之半，側向位移完全受限取 1.5 倍；kv 取垂直向之半，遠距離地震可令 kv = 0。可參考建築物耐震設計規範設計地震（475年回歸期）EPA。變位模式決定動態土壓力作用點（解說2）。' },
+      hint: '基礎規範(112) 第7.3.4節解說3：kh 取地表水平向尖峰加速度之半，側向位移完全受限取 1.5 倍；kv 取垂直向之半（本表以向下為正），遠距離地震可令 kv = 0。牆背動水壓 ΔPwe = 折減係數 × (7/12)·kh·γw·Hw1²，第7.3.6節解說4 土側受限水可取 0.7。可參考建築物耐震設計規範設計地震（475年回歸期）EPA。變位模式決定動態土壓力作用點（解說2）。' },
     { t: '7. 安全係數', f: [
       ['fss_n', '抗滑動（常時）', ''], ['fss_e', '抗滑動（地震）', ''], ['fso_n', '抗傾覆（常時）', ''],
       ['fso_e', '抗傾覆（地震）', ''], ['fsb_n', '抗承載（常時）', ''], ['fsb_e', '抗承載（地震）', '']] },
@@ -256,7 +256,7 @@
     if (kind === 'e') h += `<tr><td>Σ(1)~(14) 自重</td><td>${n(o.SW)}</td><td>–</td><td>–</td><td>–</td><td>${n(o.SWx)}</td><td>–</td></tr>`;
     for (const it of rows) {
       if (kind === 'n') h += `<tr><td>${it.name}</td><td>${n(it.W)}</td><td>–</td><td>${n(it.x)}</td><td>${n(it.y)}</td><td>${n(it.W * it.x)}</td><td>–</td></tr>`;
-      else h += `<tr><td>${it.name.replace(')', ")'")}</td><td>${n(-P.kv * it.W)}</td><td>${n(P.kh * it.W)}</td><td>${n(it.x)}</td><td>${n(it.y)}</td><td>${n(-P.kv * it.W * it.x)}</td><td>${n(P.kh * it.W * it.y)}</td></tr>`;
+      else h += `<tr><td>${it.name.replace(')', ")'")}</td><td>${n(P.kv * it.W)}</td><td>${n(P.kh * it.W)}</td><td>${n(it.x)}</td><td>${n(it.y)}</td><td>${n(P.kv * it.W * it.x)}</td><td>${n(P.kh * it.W * it.y)}</td></tr>`;
     }
     for (const x of ext) h += `<tr><td>${x.name}</td><td>${x.V !== undefined ? n(x.V) : '–'}</td><td>${x.H !== undefined ? n(x.H) : '–'}</td><td>${x.x !== undefined ? n(x.x) : '–'}</td><td>${x.y !== undefined ? n(x.y) : '–'}</td><td>${x.V !== undefined ? n(x.V * x.x) : '–'}</td><td>${x.H !== undefined ? n(x.H * x.y) : '–'}</td></tr>`;
     const X = kind === 'n' ? o.n : o.e;
@@ -341,9 +341,9 @@
         : ['Coulomb，式(7.3-5)', mK('A', B_KA), pa];
     const kae = Q.kaeOvr ? [`指定值（式(7.3-12) 計算值 = ${n(Q.KaeCalc, 3)}）`, '—', '—']
       : p.kaem === 'rankine' ? ['擬靜態 Rankine（式(7.3-12) 令 δ = θ = 0，虛擬背面垂直、不計牆面摩擦）', mK('AE', B_KAER),
-        `ϕ2 = ${d1(N.phi)}、α = ${d1(N.alpha)}、φ = tan⁻¹[kh/(1−kv)] = ${n(Q.vphi)}°（kv 取 ${Q.kvPhi === 0 ? '0' : n(Q.kvPhi, 3)}）`]
+        `ϕ2 = ${d1(N.phi)}、α = ${d1(N.alpha)}、φ = tan⁻¹[kh/(1+kv)] = ${n(Q.vphi)}°（kv 取 ${Q.kvPhi === 0 ? '0' : n(-Q.kvPhi, 3)}，向下為正）`]
       : ['Mononobe-Okabe，式(7.3-12)', mK('AE', B_KAE),
-        `ϕ2 = ${d1(N.phi)}、δ = ${d1(Q.delta)}（地震時）、θ = ${d1(N.theta)}、α = ${d1(N.alpha)}、φ = tan⁻¹[kh/(1−kv)] = ${n(Q.vphi)}°（kv 取 ${Q.kvPhi === 0 ? '0' : n(Q.kvPhi, 3)}）`];
+        `ϕ2 = ${d1(N.phi)}、δ = ${d1(Q.delta)}（地震時）、θ = ${d1(N.theta)}、α = ${d1(N.alpha)}、φ = tan⁻¹[kh/(1+kv)] = ${n(Q.vphi)}°（kv 取 ${Q.kvPhi === 0 ? '0' : n(-Q.kvPhi, 3)}，向下為正）`];
     const pf = `ϕ1 = ${d1(p.phiF)}（承載層）`;
     const kp = N.kpOvr ? ['指定值', '—', '—']
       : p.kpm === 'coulomb' ? ['Coulomb', mK('P', B_KP), `${pf}、δp = ${d1(Q.deltaP)}、θ = α = 0°`]
@@ -400,7 +400,7 @@
     <h3>1.5 地震係數</h3>
     ${eq('地表水平向 ／ 垂直向尖峰加速度 PGAh ／ PGAv', n(p.pgaH, 3) + ' / ' + n(p.pgaV, 3), 'g')}
     ${eq(`kh 建議值 = ${p.khRes ? '1.5' : '0.5'} × PGAh${p.khRes ? '（側向位移完全受限）' : ''} ／ kv 建議值 = 0.5 × PGAv`, n(o.khS, 3) + ' / ' + n(o.kvS, 3), '')}
-    ${eq('採用 kh ／ kv', n(p.kh, 3) + ' / ' + n(p.kv, 3), p.kh < o.khS - 1e-9 ? '※ kh 小於規範解說建議值' : '')}
+    ${eq('採用 kh ／ kv（kv 向下為正）', n(p.kh, 3) + ' / ' + n(p.kv, 3), p.kh < o.khS - 1e-9 ? '※ kh 小於規範解說建議值' : '')}
     ${eq('牆體變位模式', o.mv.name, '')}
     <p class="note">依建築物基礎構造設計規範(112) 第7.3.4節解說3。</p>
     <h3>1.6 安全係數</h3>
@@ -447,13 +447,13 @@
     <h2>4. 穩定分析（地震時）</h2>
     <h3>4.1 動態主動土壓力（建築物基礎構造設計規範(112) 第7.3.4節，${P.kaem === 'rankine' ? '擬靜態 Rankine' : 'Mononobe-Okabe'}）</h3>
     <p class="note">ϕ 為牆背土壤內摩擦角，φ 為地震合成角；θ 為牆背面與垂直面交角（逆時針為正），α 為牆背地表面與水平面之交角。本法原則上只適用於非凝聚性土壤。</p>
-    ${eq(`φ = tan⁻¹[kh/(1−kv)] = tan⁻¹[${n(P.kh, 3)}/(1−${Q.kvPhi === 0 ? '0' : n(Q.kvPhi, 3)})]` + (P.kvPhi0 === false ? '' : '（kv ＝ 0）'), n(Q.vphi), '度')}
+    ${eq(`φ = tan⁻¹[kh/(1+kv)] = tan⁻¹[${n(P.kh, 3)}/(1+${Q.kvPhi === 0 ? '0' : n(-Q.kvPhi, 3)})]` + (P.kvPhi0 === false ? '' : '（kv ＝ 0）'), n(Q.vphi), '度')}
     ${P.kvPhi0 === false ? '' : `<p class="note">註：計算 φ 時 kv 取 0（不採第6節輸入之 kv）。依據：建築物基礎構造設計規範(112) 第7.3.4節【解說】3：「設計所採用之垂直向地震係數 kv，原則上可取基地地表垂直向尖峰加速度值之半估計，惟對於遠距離之地震，通常可忽略垂直地震力之影響，即令 kv ＝ 0。」</p>`}
     ${eq('ϕ2 − φ − α', n(Q.crit), Q.okCrit ? '≥ 0 OK!' : '< 0 NG!（回填土失穩，KAE 無解）')}
     ${Q.kaeOvr ? '' : P.kaem === 'rankine' ? FX_KAER : FX_KAE}
     ${eq('ϕ2 ／ δ（地震時）／ θ ／ α' + (P.kaem === 'rankine' ? '（擬靜態 Rankine 取 δ = θ = 0）' : ''), `${n(N.phi, 1)} / ${n(Q.deltaA, 1)} / ${n(Q.thetaA, 1)} / ${n(N.alpha, 1)}`, '度')}
     ${eq(Q.kaeOvr ? `KAE（指定值；式(7.3-12) 計算值 = ${n(Q.KaeCalc, 3)}）` : 'KAE', n(Q.Kae, 3), '', true)}
-    ${eq('PAE = ½·γ2·H²·(1−kv)·KAE　式(7.3-11)（水位以下採浸水單位重 γ2′ = γ2 − γw，即 KAE(1−kv)·Σ）', n(Q.Pae), 'tf/m')}
+    ${eq('PAE = ½·γ2·H²·(1+kv)·KAE　式(7.3-11)（kv 向下為正；水位以下採浸水單位重 γ2′ = γ2 − γw，即 KAE(1+kv)·Σ）', n(Q.Pae), 'tf/m')}
     ${eq('ΔPAE = PAE − PA　式(解7.3-4)', n(Q.dPae), 'tf/m')}
     ${eq(`PAEh = PAE·cos(${P.kaem === 'rankine' ? 'α' : 'δ+θ'}) ／ yae`, n(Q.Paeh) + ' / ' + n(Q.yae), 'tf, m')}
     ${eq(`PAEv = PAE·sin(${P.kaem === 'rankine' ? 'α' : 'δ+θ'}) ／ xae`, n(Q.Paev) + ' / ' + n(Q.xae), 'tf, m')}
@@ -462,7 +462,7 @@
     ${eq('PQEh（超載）／ yqe', n(Q.Pqeh) + ' / ' + n(Q.yqe), 'tf, m')}
     ${eq('PQEv（超載）／ xqe', n(Q.Pqev) + ' / ' + n(Q.xqe), 'tf, m')}
     <p class="note">依第7.3.7節第1款，均布超載折算為等值填土高度計算側壓，故地震時超載以 KAE 計算，其動態增量作用點比照 ΔPAE 之變位模式取用。</p>
-    ${eq('PWE（含動水壓增量 ΔPWE = (7/12)·kh·γw·Hw1²，作用於 0.4Hw1，第7.3.6節解說3 式(解7.3-8)、(解7.3-9)）／ ywe', n(Q.Pwe) + ' / ' + n(Q.ywe), 'tf, m')}
+    ${eq(`PWE（含動水壓增量 ΔPWE = ${n(P.pwRed ?? 1, 2)} × (7/12)·kh·γw·Hw1²，作用於 0.4Hw1，第7.3.6節解說3 式(解7.3-8)、(解7.3-9)${(P.pwRed ?? 1) < 1 ? '；折減依解說4' : ''}）／ ywe`, n(Q.Pwe) + ' / ' + n(Q.ywe), 'tf, m')}
     <h4>d. 作用力總表</h4><div class="sidefig"><div class="sf-main">${forceTable(o.items, Q.ext, 'e')}</div><div class="sf-fig">${RWDraw.blocks()}</div></div>
     ${stabReport(Q, 4, 3, kpeLab, Q.kpeOvr ? '' : P.kpem === 'rankine0' ? '' : P.kpem === 'rankine' ? FX_KPER : FX_KPE)}
 

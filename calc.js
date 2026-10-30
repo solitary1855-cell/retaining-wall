@@ -37,7 +37,7 @@
     // 承載層採緊密礫石級配（R-008 附註10：承載力不足時挖除以礫石級配回填）
     gB: 1.9, phiB: 30, cB: 0, gF: 2.1, phiF: 38, cF: 0, gC: 2.4, gW: 1.0,
     qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
-    fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, mvm: 'rotBase',
+    fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, pwRed: 1, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
     cover: 7.5, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
     preset: '', T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
@@ -107,6 +107,9 @@
 
   function compute(inp) {
     const p = Object.assign({}, inp);
+    // kv 輸入以「向下為正」；內部計算沿用規範式 (1 − kv) 之慣例（向上為正），故取 kvU = −kv
+    const kvU = -(+p.kv || 0);
+    const pwRed = p.pwRed === undefined || p.pwRed === null || !isFinite(p.pwRed) ? 1 : +p.pwRed;   // 牆背動水壓折減係數（解說4 可取 0.7）
     const o = { p };
     const cf0 = CODES[p.code] || CODES.hw;
     // 超載性質：L＝活載重（依 L 係數）；D＝永久載重（垂直分量歸 D、側壓歸 H）
@@ -187,7 +190,7 @@
     // 第7.3.4節解說3：kh 取地表水平向尖峰加速度之半（側向位移完全受限取1.5倍）；kv 取垂直向之半
     o.khS = (p.khRes ? 1.5 : 0.5) * p.pgaH; o.kvS = 0.5 * p.pgaV;
     // 地震合成角 φ：勾選 kvPhi0 時依第7.3.4節解說3（遠距離地震可忽略垂直地震力）令 kv = 0，否則採輸入之 kv
-    Q.kvPhi = p.kvPhi0 === false ? p.kv : 0;
+    Q.kvPhi = p.kvPhi0 === false ? kvU : 0;
     Q.vphi = D(Math.atan(p.kh / (1 - Q.kvPhi)));
     Q.crit = N.phi - Q.vphi - N.alpha; Q.okCrit = Q.crit >= 0;
     Q.delta = p.deltaRE * p.phiB;   // 地震時牆背摩擦角（獨立輸入）
@@ -199,17 +202,17 @@
     Q.KaeCalc = moKae(N.phi, Q.deltaA, Q.thetaA, N.alpha, Q.vphi);
     Q.kaeOvr = useOvr(p.kaeOvr);
     Q.Kae = Q.kaeOvr ? +p.kaeOvr : Q.KaeCalc;
-    Q.Pae = Q.Kae * (1 - p.kv) * N.Ip; Q.Paeh = Q.Pae * cos(Q.inclE); Q.Paev = Q.Pae * sin(Q.inclE);
+    Q.Pae = Q.Kae * (1 - kvU) * N.Ip; Q.Paeh = Q.Pae * cos(Q.inclE); Q.Paev = Q.Pae * sin(Q.inclE);
     Q.dPae = Q.Pae - N.Pa; Q.dPaeh = Q.Paeh - N.Pah;
     // 合力作用點 H̄：式(解7.3-5)、(解7.3-7)、對牆頂旋轉 0.55H
     const hbar = (S, yS, T) => T === 0 ? 0 : mv.t ? mv.t * p.H :
       (S * (mv.s === null ? yS : mv.s * p.H) + (T - S) * mv.d * p.H) / T;
     Q.yae = hbar(N.Pah, N.ya, Q.Paeh); Q.xae = B;
-    Q.Pqeh = p.qs * Q.Kae * (1 - p.kv) * p.H;
+    Q.Pqeh = p.qs * Q.Kae * (1 - kvU) * p.H;
     // 超載：靜態部分維持 H/2，動態增量依變位模式（規範未另規定，比照 ΔPAE）
     Q.yqe = Q.Pqeh === 0 ? 0 : mv.t ? mv.t * p.H : (N.Pqh * N.yq + (Q.Pqeh - N.Pqh) * mv.d * p.H) / Q.Pqeh;
     Q.Pqev = N.Pqv; Q.xqe = N.xq;
-    const dPw = 7 / 12 * p.kh * p.gW * hw1 ** 2;
+    const dPw = pwRed * 7 / 12 * p.kh * p.gW * hw1 ** 2;
     Q.Pwe = N.Pw + dPw; Q.ywe = Q.Pwe === 0 ? 0 : (N.Pw * N.yw + dPw * 0.4 * hw1) / Q.Pwe;
     Q.Pbe = N.Pb; Q.xbe = N.xb;
     Q.ext = [
@@ -224,14 +227,14 @@
       { c: 'H', H: N.Pah, y: N.ya }, { c: 'H', V: N.Pav, x: N.xa }, { c: 'LH', H: N.Pqh, y: N.yq }, { c: 'LV', V: N.Pqv, x: N.xq },
       { c: 'F', H: N.Pw, y: N.yw }, { c: 'F', V: -N.Pb, x: N.xb }];
     Q.comp = [...o.items.map(itemComp),
-      ...o.items.map(it => ({ c: 'EQ', V: -p.kv * it.W, x: it.x })), ...o.items.map(it => ({ c: 'EQ', H: p.kh * it.W, y: it.y })),
+      ...o.items.map(it => ({ c: 'EQ', V: -kvU * it.W, x: it.x })), ...o.items.map(it => ({ c: 'EQ', H: p.kh * it.W, y: it.y })),
       { c: 'H', H: N.Pah, y: yAs }, { c: 'EQ', H: Q.Paeh - N.Pah, y: yAd },
       { c: 'H', V: N.Pav, x: Q.xae }, { c: 'EQ', V: Q.Paev - N.Pav, x: Q.xae },
       { c: 'LH', H: N.Pqh, y: yQs }, { c: 'EQ', H: Q.Pqeh - N.Pqh, y: yAd }, { c: 'LV', V: Q.Pqev, x: Q.xqe },
       { c: 'F', H: N.Pw, y: N.yw }, { c: 'EQ', H: dPw, y: 0.4 * hw1 }, { c: 'F', V: -Q.Pbe, x: Q.xbe }];
-    Q.SV = o.SW * (1 - p.kv) + Q.Paev + Q.Pqev - Q.Pbe;
+    Q.SV = o.SW * (1 - kvU) + Q.Paev + Q.Pqev - Q.Pbe;
     Q.SH = p.kh * o.SW + Q.Paeh + Q.Pqeh + Q.Pwe;
-    Q.Mr = o.SWx * (1 - p.kv) + Q.Paev * Q.xae + Q.Pqev * Q.xqe - Q.Pbe * Q.xbe;
+    Q.Mr = o.SWx * (1 - kvU) + Q.Paev * Q.xae + Q.Pqev * Q.xqe - Q.Pbe * Q.xbe;
     Q.Md = p.kh * o.SWy + Q.Paeh * Q.yae + Q.Pqeh * Q.yqe + Q.Pwe * Q.ywe;
 
     // Kp
@@ -255,7 +258,7 @@
     // ---------- 配筋 ----------
     const bar = k => { const b = p.bars[k]; const Ab = BARS[b.D] || 0; return { Ab, As: b.s > 0 ? Ab * 100 / b.s : 0 }; };
     o.bar = {}; for (const k of Object.keys(p.bars)) o.bar[k] = bar(k);
-    const KAH = N.Ka * cos(N.incl), KAEH = Q.Kae * (1 - p.kv) * cos(Q.inclE);
+    const KAH = N.Ka * cos(N.incl), KAEH = Q.Kae * (1 - kvU) * cos(Q.inclE);
     o.KAH = KAH; o.KAEH = KAEH; o.m = p.fy / (0.85 * p.fc);
     const zw = Math.max(0, p.H - hw1);
     function stem(z) {
@@ -264,7 +267,7 @@
       const Me = KAH * (gB * m * m / 2 * (d + m / 3) + gB * m * d * d / 2 + gp * d ** 3 / 6);
       const Fw = p.gW * d * d / 2, Mw = p.gW * d ** 3 / 6;
       const Fq = p.qs * N.Ka * z, Mq = p.qs * N.Ka * z * z / 2;
-      const rat = KAEH / KAH - 1, dFq = (p.qs * Q.Kae * (1 - p.kv) - p.qs * N.Ka) * z, dFw = 7 / 12 * p.kh * p.gW * d * d;
+      const rat = KAEH / KAH - 1, dFq = (p.qs * Q.Kae * (1 - kvU) - p.qs * N.Ka) * z, dFw = pwRed * 7 / 12 * p.kh * p.gW * d * d;
       // 斷面以上土壓之作用點依變位模式（z 取代 H）
       const MeSoil = mv.t ? Fe * (1 + rat) * mv.t * z : (mv.s === null ? Me : Fe * mv.s * z) + Fe * rat * mv.d * z;
       const MqE = mv.t ? (Fq + dFq) * mv.t * z : Mq + dFq * mv.d * z;
