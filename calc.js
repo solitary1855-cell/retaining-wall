@@ -232,14 +232,16 @@
     // Kp：Rankine 或 Coulomb（承載層 ϕ、δp）；KPE：式(7.3-14)，止滑榫前緣為垂直面、地表水平（θ = α = 0）
     if (!['coulomb', 'ck', 'ckc'].includes(p.kpm)) p.kpm = 'rankine';
     // δp 直接採牆背摩擦角 δ（常時 Kp 用常時 δ，地震時 KPE 用地震時 δ）；Rankine 不計牆面摩擦
-    Q.deltaP = p.kpm === 'rankine' ? 0 : N.delta;
+    // 被動牆面摩擦角 δp：以牆面摩擦角比 δ/ϕ 乘承載層 ϕ1 計算（常時、地震時分別）
+    o.dpN = p.deltaR * p.phiF; o.dpE = p.deltaRE * p.phiF;
+    Q.deltaP = p.kpm === 'rankine' ? 0 : o.dpN;
     N.kpOvr = useOvr(p.kpOvr); Q.kpeOvr = useOvr(p.kpeOvr);
     N.ck = p.kpm === 'ck' ? ckKp(p.phiF, Q.deltaP) : p.kpm === 'ckc' ? ckKpChart(p.phiF, Q.deltaP) : null;
     N.Kp = N.kpOvr ? +p.kpOvr : p.kpm === 'coulomb' ? coulombKp(p.phiF, Q.deltaP, 0, 0) : N.ck ? N.ck.Kp : tan(45 + p.phiF / 2) ** 2;
     // KPE：Mononobe-Okabe 式(7.3-14)（δ 同 Kp 方法）；或擬靜態 Rankine（式(7.3-14) 令 δ = θ = α = 0，kh = 0 時即 tan²(45+ϕ/2)）
     // 或 Rankine（非擬靜態）：KPE = tan²(45+ϕ/2)，與常時 Rankine Kp 相同，不計地震對被動土壓之折減
     if (!['rankine', 'rankine0'].includes(p.kpem)) p.kpem = 'mo';
-    Q.deltaPE = p.kpem === 'mo' && p.kpm !== 'rankine' ? Q.delta : 0;
+    Q.deltaPE = p.kpem === 'mo' && p.kpm !== 'rankine' ? o.dpE : 0;
     Q.Kp = Q.kpeOvr ? +p.kpeOvr : p.kpem === 'rankine0' ? tan(45 + p.phiF / 2) ** 2 : moKpe(p.phiF, Q.deltaPE, 0, 0, Q.vphi);
 
     for (const [X, sfx, elim] of [[N, 'n', 6], [Q, 'e', 3]]) stability(X, p, g, sfx, elim);
