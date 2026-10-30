@@ -29,7 +29,7 @@
       combN: '1.2D + 1.6L + 1.6H（另以 0.9D 檢核）', combE: '1.2D + 1.0E + 1.0L + 1.6H、0.9D + 1.0E + 1.6H',
       note: '依112年建築物混凝土結構設計規範表5.3.1：常時 (5.3.1b)、地震時 (5.3.1e)、(5.3.1g)；第5.3.7節 H 含土中水壓，載重因數 1.6；地表超載視為活載重 L（亦可於第3節改為永久載重）。',
       pb: 0.9, pv: 0.75, s8: 0.0015, t1: 0.0025, t2: 0.0018 },
-    // 鐵路：參照中興工程顧問擋土牆計算書（規範：鐵路）之配筋載重組合；E（土壓力）→ H，SF（水流壓力）→ F，L 為超載（活載重），風力 W 不計
+    // 鐵路：配筋載重組合；E（土壓力）→ H，SF（水流壓力）→ F，L 為超載（活載重），風力 W 不計
     rail: { name: '鐵路橋梁耐震設計規範',
       cn: [{ D: 1.4, LV: 2.38, LH: 2.38, H: 1.4, F: 1.4, EQ: 0, tag: '1.4(D+1.7L+E+SF)' },
            { D: 1.8, LV: 1.8, LH: 1.8, H: 1.8, F: 1.8, EQ: 0, tag: '1.8(D+L+E+SF)' },
@@ -38,7 +38,7 @@
       ce: [{ D: 1.2, LV: 1.0, LH: 1.0, H: 1.0, F: 1.0, EQ: 1.0, tag: '1.2D+L+E+SF+EQ' },
            { D: 0.9, LV: 0, LH: 0, H: 1.0, F: 1.0, EQ: 1.0, tag: '0.9D+E+SF+EQ' }],
       combN: '1.4(D+1.7L+H+F)、1.8(D+L+H+F)、1.4(D+H+F)、1.4(D+L+H+F)', combE: '1.2D+L+H+F+EQ、0.9D+H+F+EQ',
-      note: '載重組合參照中興工程顧問擋土牆計算書（規範：鐵路）：E（土壓力）以 H、SF（水流壓力）以 F 計，風力 W 不計；地表超載視為活載重 L。ρmin = max(14/fy, 0.8√fc′/fy)。',
+      note: '載重組合：E（土壓力）以 H、SF（水流壓力）以 F 計，風力 W 不計；地表超載視為活載重 L。ρmin = max(14/fy, 0.8√fc′/fy)。',
       pb: 0.9, pv: 0.85, s8: 0.0018, t1: 0.0025, t2: 0.0018 }
   };
 
@@ -292,7 +292,7 @@
       const MqE = mv.t ? (Fq + dFq) * mv.t * z : Mq + dFq * mv.d * z;
       const Wst = (T * z + 0.5 * (S - T) * z * z / h) * gc + 0.5 * (S - T) * z * z / h * gB;
       const Mst = (T * z * z / 2 + 0.5 * (S - T) * z ** 3 / (3 * h)) * gc + 0.5 * (S - T) * z ** 3 / (3 * h) * gB;
-      const kI = p.stemInert === false ? 0 : p.kh;   // 牆身慣性力（中興計算書不計）
+      const kI = p.stemInert === false ? 0 : p.kh;   // 牆身慣性力（可選擇不計）
       const Ve = Fe * (1 + rat) + Fw + dFw + Fq + dFq + kI * Wst, MeT = MeSoil + Mw + dFw * 0.4 * d + MqE + kI * Mst;
       // 地震時之 H 為靜態側壓（作用點依變位模式），超載靜態側壓為 LH，其餘為 EQ
       const MHs = mv.t ? Fe * mv.t * z : (mv.s === null ? Me : Fe * mv.s * z), MHq = mv.t ? Fq * mv.t * z : Mq;
@@ -324,7 +324,7 @@
       const k = 2 * r.m * r.Rn / r.fy;
       r.rho = k >= 1 ? 99 : (1 - Math.sqrt(1 - k)) / r.m;
       r.rhoMin = r.rhoMinS; r.rho43 = 4 / 3 * r.rho;
-      r.rhoT2 = z === null ? cf.t2 / 2 : 0;   // 基礎版：需要鋼筋量不小於 ρt/2（中興計算書）
+      r.rhoT2 = z === null ? cf.t2 / 2 : 0;   // 基礎版：需要鋼筋量不小於 ρt/2
       r.rhoU = Math.max(r.rho, Math.min(r.rhoMin, r.rho43), r.rhoT2);
       r.Asr = r.rhoU * 100 * r.d; r.Asp = Asp; r.okM = Asp >= r.Asr;
       return r;
@@ -343,7 +343,7 @@
       (X.e > 0 ? Math.max(0, X.qt * (1 - u / X.a)) : Math.max(0, X.qh * (1 - (B - u) / X.a)));
     const NS = 40;
     // 基礎版底面揚壓力（自趾端 u 處）：與穩定分析 Pb 相同之梯形分布，配筋時乘 F 係數
-    // 均佈（中興）：踵版 γw·Hw1、趾版 γw·Hw2；梯形：同 Pb
+    // 均佈：踵版 γw·Hw1、趾版 γw·Hw2；梯形：同 Pb
     const upUni = p.upMode !== 'trap'; o.base.upUni = upUni;
     const up = u => upUni ? p.gW * (u >= C + S ? hw1 : g.h2) : p.gW * (g.h2 + (hw1 - g.h2) * u / B);
     o.base.upH = up(B); o.base.upT = up(0);
@@ -387,11 +387,11 @@
     const tb = (D2 + D1) * 100;
     const fPos = (n, e, nu, eu) => ({ Vn: n.V, Mn: n.M, Ve: e.V, Me: e.M, Vun: nu.V, Mun: nu.M, Vue: eu.V, Mue: eu.M, gn: nu.i, ge: eu.i });
     const fNeg = (n, e, nu, eu) => ({ Vn: n.V, Mn: n.Mneg, Ve: e.V, Me: e.Mneg, Vun: nu.V, Mun: nu.Mneg, Vue: eu.V, Mue: eu.Mneg, gn: nu.iN, ge: eu.iN, rev: true });
-    // 踵版配筋層：中興計算書以 M = ∫(地盤反力 − 版上載重)·力臂，最大值配頂層筋、最小值（取絕對值）配底層筋
+    // 踵版配筋層：M = ∫(地盤反力 − 版上載重)·力臂，最大值配頂層筋、最小值（取絕對值）配底層筋
     o.heelSino = p.heelSino !== false;
     if (o.heelSino) {
-      o.rc.push(Object.assign(design('(1) 基礎踵端頂層鋼筋 S4、S6（淨載重向上之彎矩，依中興計算書配頂層）', null, tb, fNeg(hn, he, hnu, heu), As('S4'), 'S4'), { lab: '踵版頂層 S4' }));
-      o.rc.push(Object.assign(design('(2) 基礎踵端底層鋼筋 S5、S7（淨載重向下之彎矩，依中興計算書配底層）', null, tb, fPos(hn, he, hnu, heu), As('S5'), 'S5'), { lab: '踵版底層 S5' }));
+      o.rc.push(Object.assign(design('(1) 基礎踵端頂層鋼筋 S4、S6（淨載重向上之彎矩，配頂層）', null, tb, fNeg(hn, he, hnu, heu), As('S4'), 'S4'), { lab: '踵版頂層 S4' }));
+      o.rc.push(Object.assign(design('(2) 基礎踵端底層鋼筋 S5、S7（淨載重向下之彎矩，配底層）', null, tb, fPos(hn, he, hnu, heu), As('S5'), 'S5'), { lab: '踵版底層 S5' }));
     } else {
       o.rc.push(Object.assign(design('(1) 基礎踵端上層鋼筋 S4、S6（淨載重向下，上層受拉）', null, tb, fPos(hn, he, hnu, heu), As('S4'), 'S4'), { lab: '踵版上層 S4' }));
       o.rc.push(Object.assign(design('(2) 基礎踵端下層鋼筋 S5、S7（淨載重向上，下層受拉）', null, tb, fNeg(hn, he, hnu, heu), As('S5'), 'S5'), { lab: '踵版下層 S5' }));
