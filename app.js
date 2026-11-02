@@ -258,6 +258,27 @@
       <tr><td>牆體滑動</td><td>安全係數 FS</td><td>${n(X.fss)}</td><td>${n(X.FSs)}</td><td>${ck(X.okS, '≧ ' + n(X.fss, 1))}</td><td class="rm">Hu = ${n(X.Hu)} tf，Hd = ${n(X.SH)} tf</td></tr>
     </tbody></table></div>`;
   }
+  // 規範引用文字標記為 .cref（列印時隱藏）；.keep 元素（載重組合、安全係數備註）保留
+  const CODE_RE = /規範|式\(|第[\d.～~]+節|解說|表\d|圖-解/;
+  const TOK = String.raw`(?:建築物基礎構造設計規範\(112\)|公路橋梁設計規範)?\s*(?:式\(解?[\d.\-a-z]+\)(?:[、，]\s*\(解?[\d.\-a-z]+\))*|第[\d.～~]+節(?:【解說】|解說)?\s*\d*(?:第\d款)?|圖-解[\d.\-]+|表[\d.\-]+(?:\s*分類[ⅠⅡⅢⅣⅤⅥⅦ]+)?)|建築物基礎構造設計規範\(112\)|公路橋梁設計規範\s*[\d.、]*`;
+  const CODE_TOK = new RegExp(String.raw`(?<=（)\s*(?:${TOK})\s*[，、；]?|[，、；　]?\s*(?:${TOK})`, 'g');
+  function markCodeRefs(root) {
+    root.querySelectorAll('p.note').forEach(el => { if (!el.closest('.keep') && CODE_RE.test(el.textContent) && !/※/.test(el.textContent)) el.classList.add('cref'); });
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: t =>
+      t.parentElement.closest('.keep, .cref, math, svg, script') || !CODE_RE.test(t.nodeValue) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const t of nodes) {
+      const v = t.nodeValue, ranges = [];
+      // 含規範引用之全形括號整段隱藏；其餘單獨之式號、節次、表號隱藏
+      v.replace(/（[^（）]*）/g, (m, i) => { if (CODE_RE.test(m) && !m.slice(1, -1).replace(CODE_TOK, '').replace(/[\s，、；：]/g, '')) ranges.push([i, i + m.length]); return m; });
+      v.replace(CODE_TOK, (m, ...a) => { const i = a[a.length - 2]; if (m.trim() && !ranges.some(([s, e]) => i >= s && i < e)) ranges.push([i, i + m.length]); return m; });
+      if (!ranges.length) continue;
+      ranges.sort((a, b) => a[0] - b[0]);
+      const frag = document.createDocumentFragment(); let k = 0;
+      for (const [s0, e0] of ranges) { if (s0 < k) continue; frag.append(v.slice(k, s0)); const sp = document.createElement('span'); sp.className = 'cref'; sp.textContent = v.slice(s0, e0); frag.append(sp); k = e0; }
+      frag.append(v.slice(k)); t.replaceWith(frag);
+    }
+  }
   let o;
   function summary() {
     const v = document.getElementById('verdict');
@@ -407,11 +428,11 @@
     ${eq(`牆背地下水位 Hw1 = ${n(p.hw1r, 3)} × H`, n(o.hw1), 'm')}
     ${eq('牆前地下水位 Hw2（自基礎底面；負值表示位於基底以下）', o.hw2 === null ? '無地下水' : n(o.hw2), o.hw2 === null ? '' : 'm')}
     ${eq('基底下 B 範圍平均單位重（式(4.3-1) 第三項）' + ({ dry: '：γ1（水位位於基底下 B 以深或無地下水）', sub: '：γ1′ = γ1 − γw（基底位於水位以下）', mix: `：γ1m = γ1′ + (dw/B)·γw，dw = ${n(o.g.dw)} m` })[o.g.g1mode], n(o.g.g1), 'tf/m³')}
-    <h3>1.3 載重組合（${o.cf.name}）</h3>
+    <h3 class="keep">1.3 載重組合（${o.cf.name}）</h3>
     <div class="scroll"><table class="t"><thead><tr><th></th><th>穩定分析</th><th>配筋設計</th></tr></thead><tbody>
       <tr><td>常時</td><td>D+L+H+F</td><td>${o.cf.combN}</td></tr>
       <tr><td>地震時</td><td>D+L+H+F+EQ</td><td>${o.cf.combE}</td></tr></tbody></table></div>
-    <p class="note">D：靜載重（含踵版上土重、超載重）；H：側向土壓力（含超載側壓）；F：水壓力；EQ：地震力（動態土壓增量、牆體慣性力、動水壓）。${P.code === 'hw' ? '地震時（表3.3 分類Ⅶ）浮力 B 欄 β＝1，靜水壓與揚壓力 F 以 1.3 計入；Westergaard 動水壓屬 EQ。' : ''}</p>
+    <p class="note keep">D：靜載重（含踵版上土重、超載重）；H：側向土壓力（含超載側壓）；F：水壓力；EQ：地震力（動態土壓增量、牆體慣性力、動水壓）。${P.code === 'hw' ? '地震時（表3.3 分類Ⅶ）浮力 B 欄 β＝1，靜水壓與揚壓力 F 以 1.3 計入；Westergaard 動水壓屬 EQ。' : ''}</p>
     ${eq('強度折減因子：彎矩 φb ／ 剪力 φv', n(o.cf.pb) + ' / ' + n(o.cf.pv), '')}
     <h3>1.4 材料設計強度</h3>
     ${eq("混凝土強度 fc'", n(p.fc, 0), 'kgf/cm²')}${eq('鋼筋降伏強度 fy（D13 以上）', n(p.fy, 0), 'kgf/cm²')}${eq('鋼筋降伏強度 fy（D10）', n(p.fy10, 0), 'kgf/cm²')}
@@ -426,9 +447,9 @@
       <tr><td>抗滑動</td><td>${n(p.fss_n, 1)}</td><td>${n(p.fss_e, 1)}</td></tr>
       <tr><td>抗傾覆</td><td>${n(p.fso_n, 1)}</td><td>${n(p.fso_e, 1)}</td></tr>
       <tr><td>抗承載</td><td>${n(p.fsb_n, 1)}</td><td>${n(p.fsb_e, 1)}</td></tr></tbody></table></div>
-    <p class="note">依建築物基礎構造設計規範(112) 第7.4.1節（滑動）、第7.4.2節（傾覆）、第7.4.3節（支承力）；公路橋梁設計規範 第6.2.8節。</p>
+    <p class="note keep">依建築物基礎構造設計規範(112) 第7.4.1節（滑動）、第7.4.2節（傾覆）、第7.4.3節（支承力）；公路橋梁設計規範 第6.2.8節。</p>
     <h3>1.7 保護層</h3>${eq("保護層厚度 d'", n(p.cover, 1), 'cm')}
-    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ2：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ = (δ/ϕ2)·ϕ2：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${eq('被動牆面摩擦角比 δp/ϕ1：常時 ／ 地震時', n(P.deltaRP, 3) + ' / ' + n(P.deltaRPE, 3), '')}${eq('被動牆面摩擦角 δp = (δp/ϕ1)·ϕ1：常時 ／ 地震時', n(o.dpN, 1) + ' / ' + n(o.dpE, 1), '度')}${kTable()}${N.ck && !N.ck.inRange ? '<p class="note">※ 承載層 ϕ 超出圖-解7.3-1 表列範圍（10°～45°），以邊界值計算。</p>' : ''}${N.ck && N.ck.outChart ? '<p class="note">※ 承載層 ϕ 大於 38°，圖-解7.3-1 θ = 0° 曲線已超出圖框，Kp(δ/ϕ=−1) 改以 tan²(45+ϕ/2)/R(δ=0) 反推。</p>' : ''}${p.kpm !== 'rankine' && Q.deltaP > 2 * p.phiF / 3 + 1e-9 ? '<p class="note">※ δp 大於 2ϕ1/3，第7.3.3節解說3規定設計採用之牆面摩擦角不宜大於 2ϕ/3。</p>' : ''}</div>
+    <div class="sec18"><h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ2：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ = (δ/ϕ2)·ϕ2：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${eq('被動牆面摩擦角比 δp/ϕ1：常時 ／ 地震時', n(P.deltaRP, 3) + ' / ' + n(P.deltaRPE, 3), '')}${eq('被動牆面摩擦角 δp = (δp/ϕ1)·ϕ1：常時 ／ 地震時', n(o.dpN, 1) + ' / ' + n(o.dpE, 1), '度')}${kTable()}${N.ck && !N.ck.inRange ? '<p class="note">※ 承載層 ϕ 超出圖-解7.3-1 表列範圍（10°～45°），以邊界值計算。</p>' : ''}${N.ck && N.ck.outChart ? '<p class="note">※ 承載層 ϕ 大於 38°，圖-解7.3-1 θ = 0° 曲線已超出圖框，Kp(δ/ϕ=−1) 改以 tan²(45+ϕ/2)/R(δ=0) 反推。</p>' : ''}${p.kpm !== 'rankine' && Q.deltaP > 2 * p.phiF / 3 + 1e-9 ? '<p class="note">※ δp 大於 2ϕ1/3，第7.3.3節解說3規定設計採用之牆面摩擦角不宜大於 2ϕ/3。</p>' : ''}</div></div>
 
     <h2>2. 擋土牆設計尺寸及分析結果</h2>
     <h3>2.1 擋土牆設計尺寸</h3>
@@ -488,8 +509,8 @@
     <h2>5. 配筋設計（USD）</h2>
     <h3>5.1 設計條件</h3>
     <p>1. 牆身與基礎交界為剛性區。2. 牆身、趾版及踵版視為懸臂梁（公路橋梁設計規範 6.2.2、6.2.3）。
-    3. 地震時土壓動態增量作用點依牆體變位模式（${o.mv.name}，第7.3.4節解說2，以斷面深度 z 取代 H），${P.stemInert === false ? '不計牆身慣性力' : '並計入牆身慣性力'}。4. 基礎版依地盤反力分 40 等分條帶，沿版長逐斷面計算 V、M；配筋時地盤反力以因數化載重（各分項乘載重係數）重新計算，版底揚壓力（均佈或同穩定分析 Pb 之梯形分布，見第9節）乘 F 係數自版上載重扣除。踵版、趾版均分別檢核正、反向彎矩（上層、下層鋼筋），剪力取各斷面絕對值最大者。${o.heelSino ? '踵版配筋層：M = ∫(地盤反力 − 版上載重)·力臂，最大值配頂層筋 S4、最小值配底層筋 S5。' : ''}
-    5. 載重組合（${o.cf.name}）：常時 ${o.cf.combN}；地震時 ${o.cf.combE}。${o.cf.note || ''}多組組合時取最不利者。</p>
+    3. 地震時土壓動態增量作用點依牆體變位模式（${o.mv.name}，第7.3.4節解說2，以斷面深度 z 取代 H），${P.stemInert === false ? '不計牆身慣性力' : '並計入牆身慣性力'}。4. 基礎版依地盤反力分 40 等分條帶，沿版長逐斷面計算 V、M；配筋時地盤反力以因數化載重（各分項乘載重係數）重新計算，版底揚壓力（${o.base.upUni ? '均佈：踵版 γw·Hw1、趾版 γw·Hw2' : '梯形分布，同穩定分析 Pb'}）乘 F 係數自版上載重扣除。踵版、趾版均分別檢核正、反向彎矩（上層、下層鋼筋），剪力取各斷面絕對值最大者。${o.heelSino ? '踵版配筋層：M = ∫(地盤反力 − 版上載重)·力臂，最大值配頂層筋 S4、最小值配底層筋 S5。' : ''}
+    <span class="keep">5. 載重組合（${o.cf.name}）：常時 ${o.cf.combN}；地震時 ${o.cf.combE}。${o.cf.note || ''}多組組合時取最不利者。</span></p>
     ${eq("m = fy/0.85fc'（D13 以上）", n(o.m, 3), '')}${eq('ρmin（D13 以上）', n(o.rhoMin, 4), '')}<p class="note">主筋含 D10 之斷面以 fy = ${n(p.fy10, 0)} kgf/cm² 計算 m 與 ρmin。</p>
     <h3>5.2 牆身設計</h3>${(() => { const k = o.stemK; return eq(`設計用牆背摩擦角 δ：常時 ／ 地震時${k.ovrN || k.ovrE ? '（另行指定）' : '（同穩定分析）'}`, n(k.dN, 1) + ' / ' + n(k.dE, 1), '度') + eq('Ka ／ KAE', n(k.Ka, 3) + ' / ' + n(k.Kae, 3), '') + eq(k.cos ? '水平係數 Ka·cos(δ+θ) ／ KAE·(1+kv)·cos(δ+θ)' : '水平係數 Ka ／ KAE·(1+kv)（不乘 cos(δ+θ)）', n(o.KAH, 3) + ' / ' + n(o.KAEH, 3), ''); })()}${o.rc.slice(0, 3).map(rcReport).join('')}
     ${o.min.slice(0, 2).map((m, i) => `<h4>(${i + 4}) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}
@@ -500,6 +521,7 @@
     ${o.rc.slice(3).map(rcReport).join('')}
     ${[o.min[2]].map(m => `<h4>(3) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}`;
     document.getElementById('report').innerHTML = h;
+    markCodeRefs(document.getElementById('report'));
     // 數值儲存格標記（列印時以藍字表示）
     document.querySelectorAll('#report table.t td').forEach(td => { if (/^\s*[-−+]?[\d.,]+(\s*\/\s*[-−+]?[\d.,]+)*\s*$/.test(td.textContent)) td.classList.add('nv'); });
     // 列印頁尾：計算書編號-頁碼（比照計算書排版）

@@ -306,11 +306,17 @@ details.grp > summary::-webkit-details-marker { display: none; }
   .tag { border-radius: 0; background: none !important; border: 1px solid #000; color: #000 !important; font-weight: 400; padding: 0 2mm; }
   .tag.ng { color: #e00000 !important; }
   .tag::after { content: "!"; }
-  /* 作用力總表：表格全寬，分塊圖置於下方 */
-  .sidefig { flex-direction: column !important; gap: 2mm; }
-  .sf-fig { flex: none !important; width: 70mm; border: 0; padding: 0; }
-  .sf-main { width: 100%; }
-  .dimimg { max-width: 85mm; }
+  /* 示意圖置於頁面左側 */
+  .sidefig { flex-direction: row-reverse !important; gap: 4mm; }
+  .sf-fig { flex: 0 0 52mm !important; max-width: 52mm; border: 0; padding: 0; }
+  .sf-main { flex: 1 1 0; min-width: 0; }
+  .report .sidefig .sf-main > * { margin-left: 0; }
+  .dimrow { flex-direction: row-reverse !important; gap: 4mm; }
+  .dimimg { flex: 0 0 80mm; max-width: 80mm; }
+  /* 不列印：1.8 節、規範引用文字 */
+  .report .sec18, .report .cref { display: none !important; }
+  .report h2, .report h3, .report h4 { break-after: avoid; page-break-after: avoid; }
+  .report .scroll, .report .sidefig, .report .dimrow { break-inside: avoid; }
 }
 
 /* 穩定分析結果表（畫面） */
