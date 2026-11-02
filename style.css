@@ -351,3 +351,8 @@ details.grp > summary::-webkit-details-marker { display: none; }
 /* 僅畫面／僅列印 */
 .report .prt-only { display: none; }
 @media print { .report .scr-only { display: none !important; } .report div.prt-only { display: block; } .report span.prt-only { display: inline; } }
+
+/* 網頁表格：靠左、依內容寬度（不滿版） */
+.report table.t { width: auto; max-width: 100%; }
+.report .dimtab table.t { width: 100%; }
+.report table.stab td.c { text-align: center; }

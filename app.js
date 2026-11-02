@@ -254,7 +254,7 @@
     const ck = (b, s) => `<span class="ck${b ? '' : ' ng'}">${s}　${b ? 'OK!' : 'NG!'}</span>`;
     return `<div class="scroll"><table class="t stab"><thead><tr><th colspan="2">檢核項目</th><th>規範值</th><th>計算值</th><th>檢核結果</th><th>備註</th></tr></thead><tbody>
       <tr><td rowspan="2">牆體傾覆</td><td>安全係數 FS</td><td>${n(X.fso)}</td><td>${n(X.FSo)}</td><td>${ck(X.okO, '≧ ' + n(X.fso, 1))}</td><td class="rm">Mr = ${n(X.Mr)} tf-m，Md = ${n(X.Md)} tf-m</td></tr>
-      <tr><td>偏心距 e (m)</td><td>${n(o.g.B / elim)}</td><td>${n(Math.abs(X.e))}</td><td>${ck(X.okE, '≦ B/' + elim)}</td><td class="rm">B/${elim} = ${n(o.g.B / elim)} m，e = ${n(X.e)} m</td></tr>
+      <tr><td class="c">偏心距 e (m)</td><td>${n(o.g.B / elim)}</td><td>${n(Math.abs(X.e))}</td><td>${ck(X.okE, '≦ B/' + elim)}</td><td class="rm">B/${elim} = ${n(o.g.B / elim)} m，e = ${n(X.e)} m</td></tr>
       <tr><td>基礎容許支承力</td><td>安全係數 FS</td><td>${n(X.fsb)}</td><td>${n(X.FSb)}</td><td>${ck(X.okB, '≧ ' + n(X.fsb, 1))}</td><td class="rm">qu = ${n(X.qu)} tf/m²，qmax = ${n(X.qmax)} tf/m²</td></tr>
       <tr><td>牆體滑動</td><td>安全係數 FS</td><td>${n(X.fss)}</td><td>${n(X.FSs)}</td><td>${ck(X.okS, '≧ ' + n(X.fss, 1))}</td><td class="rm">Hu = ${n(X.Hu)} tf，Hd = ${n(X.SH)} tf</td></tr>
     </tbody></table></div>`;
