@@ -347,3 +347,7 @@ details.grp > summary::-webkit-details-marker { display: none; }
 .report .c51t { display: inline-flex; flex-direction: column; vertical-align: top; text-indent: 0; margin-left: .6em; }
 .report .hl { font-family: var(--mono); font-weight: 600; color: var(--accent); padding: 0 .4em; }
 @media print { .report .hl { background: #e6e6e6; color: #e00000; font-weight: 400; } }
+
+/* 僅畫面／僅列印 */
+.report .prt-only { display: none; }
+@media print { .report .scr-only { display: none !important; } .report div.prt-only { display: block; } .report span.prt-only { display: inline; } }
