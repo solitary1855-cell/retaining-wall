@@ -338,3 +338,6 @@ details.grp > summary::-webkit-details-marker { display: none; }
 .report table.rbt td { text-align: center; }
 .report table.rbt td.res { white-space: nowrap; color: var(--ok); }
 .report table.rbt .ngt { color: var(--ng); }
+
+/* 5.1 設計條件：依編號分行，懸掛縮排 */
+.report .conds p { margin: 2px 0; padding-left: 1.4em; text-indent: -1.4em; }
