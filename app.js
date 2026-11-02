@@ -551,7 +551,7 @@
     // 列印頁尾：計算書編號-頁碼（比照計算書排版）
     let ps = document.getElementById('pageFoot'); if (!ps) { ps = document.createElement('style'); ps.id = 'pageFoot'; document.head.appendChild(ps); }
     const fid = String(P.id || 'RW').replace(/["\\]/g, '');
-    ps.textContent = `@page { @bottom-right { content: "${fid}-" counter(page); font: italic 9pt 'Times New Roman', serif; color: #000; } }`;
+    ps.textContent = `@page { @bottom-right { content: "${fid}-" counter(page); font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; font-size: 8.5pt; color: #000; } }`;
   }
 
   function run() {
