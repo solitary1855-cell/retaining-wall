@@ -201,7 +201,8 @@
   // ---------- helpers ----------
   const n = (v, d = 2) => (v === null || v === undefined || !isFinite(v)) ? '–' : (+v).toFixed(d);
   const tag = ok => `<span class="tag ${ok ? 'ok' : 'ng'}">${ok ? 'OK' : 'NG'}</span>`;
-  const eq = (lab, v, u = '', key = false) => `<div class="eq${key ? ' key' : ''}"><span>${lab}</span><span class="v">${v}</span><span class="u">${u}</span></div>`;
+  // 數值與單位包在同一個不換行區塊，單位緊接數值
+  const eq = (lab, v, u = '', key = false) => `<div class="eq${key ? ' key' : ''}"><span class="lb">${lab}</span><span class="vu"><span class="v">${v}</span><span class="u">${u}</span></span></div>`;
 
   // ---------- 直式公式（MathML） ----------
   const mT = str => str.replace(/(sin|cos|tan)(²)?|([A-Za-zα-ωϕ])|(\d+)|(.)/g, (m, fn, sq, v, d, op) =>
