@@ -51,7 +51,7 @@
     fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, pwRed: 1, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
     cover: 7.5, dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni', heelSino: true, rcVer: 1, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
-    preset: '', T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
+    preset: '', eta1: 0, T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
       S4: { D: 16, s: 20 }, S5: { D: 16, s: 30 }, S8: { D: 19, s: 30 }, T1: { D: 19, s: 30 }, T2: { D: 19, s: 30 }
@@ -128,8 +128,10 @@
     o.cf = cf;
     // geometry
     const g = o.g = {};
-    g.h = p.H - p.D1 - p.D2; g.B = p.C + p.S + p.E; g.eta = (p.S - p.T) / g.h; g.Y = p.Df + p.D1 + p.D2;   // 牆前回填高度（自基底），Df 為牆身前緣處趾版頂面以上覆土
-    g.Ws = g.B - p.C - p.T;
+    g.h = p.H - p.D1 - p.D2; g.B = p.C + p.S + p.E;
+    // 牆前斜率 η1、牆身前底寬 S1 = η1·h、牆身後底寬 S2 = S − T − S1、牆背斜率 η2 = S2/h
+    g.eta1 = +p.eta1 || 0; g.S1f = g.eta1 * g.h; g.S2b = p.S - p.T - g.S1f; g.eta = g.S2b / g.h; g.okS2 = g.S2b >= -1e-9; g.Y = p.Df + p.D1 + p.D2;   // 牆前回填高度（自基底），Df 為牆身前緣處趾版頂面以上覆土
+    g.Ws = g.B - p.C - g.S1f - p.T;   // 牆頂背緣至踵端（超載作用寬度）
     const B = g.B, h = g.h;
     o.hw1 = p.hw1r * p.H;
     // 牆前水位 Hw2（自基底）：空白＝無地下水；正值＝基底以上水深；負值＝水位在基底以下 |Hw2|
@@ -157,28 +159,30 @@
     N.Ipm = 0.5 * gB * N.H1 ** 2 * (hw1 + N.H1 / 3) + gB * N.H1 * hw1 * hw1 / 2 + 0.5 * gp * hw1 ** 3 / 3;
     N.Pa = N.Ka * N.Ip; N.Pah = N.Pa * cos(N.incl); N.Pav = N.Pa * sin(N.incl);
     N.ya = N.Ipm / N.Ip; N.xa = B;
-    N.Pqh = p.qs * N.Ka * p.H; N.yq = p.H / 2; N.Pqv = p.qs * g.Ws; N.xq = p.C + p.T + g.Ws / 2;
+    N.Pqh = p.qs * N.Ka * p.H; N.yq = p.H / 2; N.Pqv = p.qs * g.Ws; N.xq = p.C + g.S1f + p.T + g.Ws / 2;
     const h2 = g.h2;
     N.Pw = 0.5 * p.gW * (hw1 ** 2 - h2 ** 2);
     N.yw = N.Pw === 0 ? 0 : p.gW * (hw1 ** 3 - h2 ** 3) / 6 / N.Pw;
     N.Pb = p.gW * (hw1 + h2) / 2 * B;
     N.xb = hw1 + h2 === 0 ? B / 2 : B * (h2 + 2 * hw1) / (3 * (hw1 + h2));
-    const ta = tan(N.alpha), C = p.C, S = p.S, T = p.T, E = p.E, D1 = p.D1, D2 = p.D2, gc = p.gC;
+    const ta = tan(N.alpha), C = p.C, S = p.S, T = p.T, E = p.E, D1 = p.D1, D2 = p.D2, gc = p.gC, F1 = g.S1f, S2b = g.S2b;
     o.items = [
-      ['(1) 牆身矩形', T * h * gc, C + T / 2, D1 + D2 + h / 2],
+      ['(1) 牆身矩形', T * h * gc, C + F1 + T / 2, D1 + D2 + h / 2],
       ['(2) 牆身下基礎', S * (D1 + D2) * gc, C + S / 2, (D1 + D2) / 2],
       ['(3) 趾版矩形', C * D2 * gc, C / 2, D2 / 2],
       ['(4) 踵版矩形', E * D2 * gc, C + S + E / 2, D2 / 2],
       ['(5) 趾版斜坡', 0.5 * C * D1 * gc, 2 * C / 3, D2 + D1 / 3],
       ['(6) 踵版斜坡', 0.5 * E * D1 * gc, C + S + E / 3, D2 + D1 / 3],
-      ['(7) 牆背斜面', 0.5 * (S - T) * h * gc, C + T + (S - T) / 3, D1 + D2 + h / 3],
+      ['(7) 牆背斜面', 0.5 * S2b * h * gc, C + F1 + T + S2b / 3, D1 + D2 + h / 3],
       ['(8) 踵版上填土', E * h * gB, C + S + E / 2, D1 + D2 + h / 2],
-      ['(9) 背填坡填土', 0.5 * g.Ws ** 2 * ta * gB, C + T + 2 * g.Ws / 3, p.H + g.Ws * ta / 3],
-      ['(10) 牆背斜面上填土', 0.5 * (S - T) * h * gB, C + T + 2 * (S - T) / 3, D1 + D2 + 2 * h / 3],
+      ['(9) 背填坡填土', 0.5 * g.Ws ** 2 * ta * gB, C + F1 + T + 2 * g.Ws / 3, p.H + g.Ws * ta / 3],
+      ['(10) 牆背斜面上填土', 0.5 * S2b * h * gB, C + F1 + T + 2 * S2b / 3, D1 + D2 + 2 * h / 3],
       ['(11) 踵版斜坡上填土', 0.5 * E * D1 * gB, C + S + 2 * E / 3, D2 + 2 * D1 / 3],
       ['(12) 趾版上覆土', C * (p.Df + D1 / 2) * gB, C / 2, (g.Y + D2 + D1 / 2) / 2],
       ['(13) 牆前積水', p.gW * Math.max(0, g.h2 - g.Y) * C, C / 2, g.Y + Math.max(0, g.h2 - g.Y) / 2],
-      ['(14) 止滑榫', (p.Kd > 0 ? (p.Ks || 0) * p.Kd : 0) * gc, p.Kc + (p.Ks || 0) / 2, -p.Kd / 2]
+      ['(14) 止滑榫', (p.Kd > 0 ? (p.Ks || 0) * p.Kd : 0) * gc, p.Kc + (p.Ks || 0) / 2, -p.Kd / 2],
+      ['(15) 牆前斜面', 0.5 * F1 * h * gc, C + 2 * F1 / 3, D1 + D2 + h / 3],
+      ['(16) 牆前斜面上覆土', 0.5 * g.eta1 * Math.min(p.Df, h) ** 2 * gB, C + g.eta1 * Math.min(p.Df, h) / 3, D1 + D2 + 2 * Math.min(p.Df, h) / 3]
     ].map(([name, W, x, y]) => ({ name, W, x, y }));
     o.SW = o.items.reduce((a, b) => a + b.W, 0);
     o.SWx = o.items.reduce((a, b) => a + b.W * b.x, 0);
@@ -287,8 +291,8 @@
       // 斷面以上土壓之作用點依變位模式（z 取代 H）
       const MeSoil = mv.t ? Fe * (1 + rat) * mv.t * z : (mv.s === null ? Me : Fe * mv.s * z) + Fe * rat * mv.d * z;
       const MqE = mv.t ? (Fq + dFq) * mv.t * z : Mq + dFq * mv.d * z;
-      const Wst = (T * z + 0.5 * (S - T) * z * z / h) * gc + 0.5 * (S - T) * z * z / h * gB;
-      const Mst = (T * z * z / 2 + 0.5 * (S - T) * z ** 3 / (3 * h)) * gc + 0.5 * (S - T) * z ** 3 / (3 * h) * gB;
+      const Wst = (T * z + 0.5 * (S - T) * z * z / h) * gc + 0.5 * g.S2b * z * z / h * gB;   // 混凝土含牆前、牆背斜面；填土僅牆背斜面上
+      const Mst = (T * z * z / 2 + 0.5 * (S - T) * z ** 3 / (3 * h)) * gc + 0.5 * g.S2b * z ** 3 / (3 * h) * gB;
       const kI = p.stemInert === false ? 0 : p.kh;   // 牆身慣性力（可選擇不計）
       const Ve = Fe * (1 + rat) + Fw + dFw + Fq + dFq + kI * Wst, MeT = MeSoil + Mw + dFw * 0.4 * d + MqE + kI * Mst;
       // 地震時之 H 為靜態側壓（作用點依變位模式），超載靜態側壓為 LH，其餘為 EQ

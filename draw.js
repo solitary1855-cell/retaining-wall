@@ -29,8 +29,10 @@
   </defs>`;
 
   // 牆體外形
+  // 牆前斜面寬 S1 = η1·h
+  const fS1 = p => (+p.eta1 || 0) * (p.H - p.D1 - p.D2);
   function wallPoly(p, B) {
-    return [[0, 0], [B, 0], [B, p.D2], [p.C + p.S, p.D2 + p.D1], [p.C + p.T, p.H], [p.C, p.H], [p.C, p.D2 + p.D1], [0, p.D2]];
+    return [[0, 0], [B, 0], [B, p.D2], [p.C + p.S, p.D2 + p.D1], [p.C + fS1(p) + p.T, p.H], [p.C + fS1(p), p.H], [p.C, p.D2 + p.D1], [0, p.D2]];
   }
   function keyPoly(p) {
     const ks = p.Ks || 0.3;
@@ -89,16 +91,16 @@
       xmax = Math.max(xmax0, B + 230 / s0, B + pw + 150 / s0);
     }
     const s1 = (Wd - 68) / (xmax - xmin);
-    const ymin = -Math.max(p.Kd, 0) - rd - 0.3 - 20 / s1, ymax = p.H + Math.max(0.45, (B - p.C - p.T) * ta + 0.4) + 0.12 + 40 / s1;
+    const ymin = -Math.max(p.Kd, 0) - rd - 0.3 - 20 / s1, ymax = p.H + Math.max(0.45, (B - p.C - fS1(p) - p.T) * ta + 0.4) + 0.12 + 40 / s1;
     const F = frame(xmin, xmax, ymin, ymax, Wd, FS);
     const x0 = B;
     let s = `<svg viewBox="0 0 ${F.W} ${F.H.toFixed(0)}" class="draw" role="img" aria-label="擋土牆載重示意圖">${defs}`;
     // soils
-    const backfill = [[p.C + p.T, p.H], [x0, p.H + (x0 - p.C - p.T) * ta], [x0, 0], [p.C + p.S, 0]];
-    s += `<polygon points="${F.P([[p.C + p.T, p.H], [x0, p.H + (x0 - p.C - p.T) * ta], [x0, p.D2], [p.C + p.S, p.D2 + p.D1]])}" fill="url(#pSoil)"/>`;
-    s += `<polygon points="${F.P([[xmin + 0.1, g.Y], [p.C, g.Y], [p.C, p.D2 + p.D1], [0, p.D2], [0, g.Y > p.D2 ? p.D2 : 0], [xmin + 0.1, g.Y > p.D2 ? p.D2 : 0]])}" fill="url(#pSoil)"/>`;
+    const backfill = [[(p.C + fS1(p) + p.T), p.H], [x0, p.H + (x0 - p.C - fS1(p) - p.T) * ta], [x0, 0], [p.C + p.S, 0]];
+    s += `<polygon points="${F.P([[(p.C + fS1(p) + p.T), p.H], [x0, p.H + (x0 - p.C - fS1(p) - p.T) * ta], [x0, p.D2], [p.C + p.S, p.D2 + p.D1]])}" fill="url(#pSoil)"/>`;
+    s += `<polygon points="${F.P([[xmin + 0.1, g.Y], [p.C + fS1(p) * Math.min(1, Math.max(0, g.Y - p.D2 - p.D1) / g.h), g.Y], [p.C, p.D2 + p.D1], [0, p.D2], [0, g.Y > p.D2 ? p.D2 : 0], [xmin + 0.1, g.Y > p.D2 ? p.D2 : 0]])}" fill="url(#pSoil)"/>`;
     s += grass(F, xmin + 0.1, p.C, g.Y);
-    s += `<line class="gl" x1="${F.X(p.C + p.T)}" y1="${F.Y(p.H)}" x2="${F.X(x0)}" y2="${F.Y(p.H + (x0 - p.C - p.T) * ta)}"/>`;
+    s += `<line class="gl" x1="${F.X((p.C + fS1(p) + p.T))}" y1="${F.Y(p.H)}" x2="${F.X(x0)}" y2="${F.Y(p.H + (x0 - p.C - fS1(p) - p.T) * ta)}"/>`;
     // water
     if (hw1 > 0) s += `<rect x="${F.X(p.C + p.S)}" y="${F.Y(hw1)}" width="${F.X(x0) - F.X(p.C + p.S)}" height="${F.Y(Math.max(p.D2, 0)) - F.Y(hw1)}" fill="var(--water)" opacity=".10"/>
       <line class="wl" x1="${F.X(p.C + p.S)}" y1="${F.Y(hw1)}" x2="${F.X(x0)}" y2="${F.Y(hw1)}"/>
@@ -110,7 +112,7 @@
     s += `<line class="vb" x1="${F.X(x0)}" y1="${F.Y(0)}" x2="${F.X(x0)}" y2="${F.Y(p.H + 0.2)}"/>`;
     // surcharge
     if (p.qs > 0) {
-      const xs = p.C + p.T, xe = x0, nA = 7;
+      const xs = (p.C + fS1(p) + p.T), xe = x0, nA = 7;
       let arr = '';
       for (let i = 0; i <= nA; i++) { const x = xs + (xe - xs) * i / nA, y = p.H + (x - xs) * ta; arr += `<line class="ld" x1="${F.X(x)}" y1="${F.Y(y) - 24}" x2="${F.X(x)}" y2="${F.Y(y) - 2}" marker-end="url(#ar)"/>`; }
       s += arr + `<line class="ld" x1="${F.X(xs)}" y1="${F.Y(p.H) - 24}" x2="${F.X(xe)}" y2="${F.Y(p.H + (xe - xs) * ta) - 24}"/>
@@ -171,10 +173,10 @@
     // ground & backfill
     s += grass(F, xmin + 0.15, p.C, g.Y);
     const xr = xmax - 0.1;
-    s += `<line class="gl" x1="${F.X(p.C + p.T)}" y1="${F.Y(p.H)}" x2="${F.X(xr)}" y2="${F.Y(p.H + (xr - p.C - p.T) * ta)}"/>`;
+    s += `<line class="gl" x1="${F.X((p.C + fS1(p) + p.T))}" y1="${F.Y(p.H)}" x2="${F.X(xr)}" y2="${F.Y(p.H + (xr - p.C - fS1(p) - p.T) * ta)}"/>`;
     // slope mark
-    const sx = p.C + p.T + 0.5 * (xr - p.C - p.T), sy = p.H + (sx - p.C - p.T) * ta + 0.1 + 0.5 * u;
-    s += `<text class="lt" x="${F.X(sx)}" y="${F.Y(sy)}" text-anchor="middle">背填坡度 1 : ${p.n}</text>`;
+    const sx = (p.C + fS1(p) + p.T) + 0.5 * (xr - p.C - fS1(p) - p.T), sy = p.H + (sx - p.C - fS1(p) - p.T) * ta + 0.1 + 0.5 * u;
+    s += `<text class="lt" x="${F.X(sx)}" y="${F.Y(sy)}" text-anchor="middle">背填坡度 1V : ${p.n}H</text>`;
     // wall
     s += `<polygon points="${F.P(wallPoly(p, B))}" fill="url(#pConc)" class="conc"/>`;
     const kp = keyPoly(p); if (kp) s += `<polygon points="${F.P(kp)}" fill="url(#pConc)" class="conc"/>`;
@@ -182,20 +184,21 @@
     s += `<rect x="${F.X(-0.1)}" y="${F.Y(0)}" width="${F.X(B + 0.1) - F.X(-0.1)}" height="4" class="lev"/>`;
     // ---- rebar ----
     const sb = (x1, y1, x2, y2, cls = 'rb') => `<line class="${cls}" x1="${F.X(x1)}" y1="${F.Y(y1)}" x2="${F.X(x2)}" y2="${F.Y(y2)}"/>`;
-    const backX = y => p.C + p.T + (p.S - p.T) * (p.H - y) / g.h; // 牆背 x at y
+    const backX = y => (p.C + fS1(p) + p.T) + (p.S - p.T - fS1(p)) * (p.H - y) / g.h; // 牆背 x at y
+    const frontX = y => p.C + fS1(p) * Math.max(0, y - yb) / g.h;   // 牆前 x at y
     // S1 back face full height + hook into base
     s += `<polyline class="rb" points="${F.P([[backX(p.H - c) - c, p.H - c], [backX(yb) - c, yb], [backX(c) - c, c], [backX(c) - c - 0.25, c]])}"/>`;
     const L2 = p.bars.S2.L, L3 = p.bars.S3.L;
     if (L2 > 0) s += `<polyline class="rb rb2" points="${F.P([[backX(yb + L2) - 2 * c, yb + L2], [backX(yb) - 2 * c, yb], [backX(c) - 2 * c, c + 0.02]])}"/>`;
     if (L3 > 0) s += `<polyline class="rb rb3" points="${F.P([[backX(yb + L3) - 2.8 * c, yb + L3], [backX(yb) - 2.8 * c, yb], [backX(c) - 2.8 * c, c + 0.04]])}"/>`;
     // S8 front face
-    s += `<polyline class="rb" points="${F.P([[p.C + c, p.H - c], [p.C + c, c], [p.C + c + 0.2, c]])}"/>`;
+    s += `<polyline class="rb" points="${F.P([[frontX(p.H - c) + c, p.H - c], [p.C + c, yb], [p.C + c, c], [p.C + c + 0.2, c]])}"/>`;
     // S4 heel top, S5 bottom
     s += `<polyline class="rb" points="${F.P([[p.C + p.S - 0.25, yb - c], [p.C + p.S, yb - c], [B - c, p.D2 - c], [B - c, p.D2 - 0.25]])}"/>`;
     s += `<polyline class="rb" points="${F.P([[c, p.D2 - 0.2], [c, c], [B - c, c], [B - c, c + 0.2]])}"/>`;
     // T1 / T2 dots
     let dots = '', t1 = null, t2 = null;
-    for (let y = yb + 0.2; y < p.H - 0.05; y += 0.25) { t1 = [p.C + c, y]; dots += `<circle class="rd" cx="${F.X(p.C + c)}" cy="${F.Y(y)}" r="2.2"/><circle class="rd" cx="${F.X(backX(y) - c)}" cy="${F.Y(y)}" r="2.2"/>`; }
+    for (let y = yb + 0.2; y < p.H - 0.05; y += 0.25) { t1 = [frontX(y) + c, y]; dots += `<circle class="rd" cx="${F.X(frontX(y) + c)}" cy="${F.Y(y)}" r="2.2"/><circle class="rd" cx="${F.X(backX(y) - c)}" cy="${F.Y(y)}" r="2.2"/>`; }
     for (let x = 0.15; x < B - 0.05; x += 0.2) { dots += `<circle class="rd" cx="${F.X(x)}" cy="${F.Y(c + 0.03)}" r="2.2"/>`; }
     for (let x = p.C + p.S + 0.1; x < B - 0.05; x += 0.2) { const yt = p.D2 + p.D1 * (B - x) / Math.max(p.E, 1e-6); t2 = [x, yt - c - 0.03]; dots += `<circle class="rd" cx="${F.X(x)}" cy="${F.Y(yt - c - 0.03)}" r="2.2"/>`; }
     s += dots;
@@ -205,7 +208,7 @@
     s += lab(backX(p.H - 0.25) - c, p.H - 0.25, rx * 0.55 + backX(p.H - 0.25) * 0.45 + 0.1, p.H - 0.12 - 0.6 * u, 'S1');
     if (L2 > 0) s += lab(backX(yb + L2 * 0.6) - 2 * c, yb + L2 * 0.6, backX(yb + L2 * 0.6) + 0.35, yb + L2 * 0.6 + 0.1, 'S2');
     if (L3 > 0) s += lab(backX(yb + L3 * 0.4) - 2.8 * c, yb + L3 * 0.4, backX(yb + L3 * 0.4) + 0.35, yb + L3 * 0.4 - 0.05, 'S3');
-    s += lab(p.C + c, yb + g.h * 0.45, p.C - 0.25, yb + g.h * 0.45 + 0.05, 'S8', 'end');
+    s += lab(frontX(yb + g.h * 0.45) + c, yb + g.h * 0.45, p.C - 0.25, yb + g.h * 0.45 + 0.05, 'S8', 'end');
     const ring = d => `<circle class="ring" cx="${F.X(d[0])}" cy="${F.Y(d[1])}" r="6"/>`;
     const toward = (d, tx, ty) => { const dx = F.X(tx) - F.X(d[0]), dy = F.Y(ty) - F.Y(d[1]), L = Math.hypot(dx, dy) || 1; return [d[0] + (dx / L) * 6 / F.s, d[1] - (dy / L) * 6 / F.s]; };
     if (t1) { const tp = [p.C - 0.25, t1[1] - 0.3 * u]; s += ring(t1) + lab(...toward(t1, ...tp), ...tp, 'T1', 'end'); }
@@ -214,8 +217,8 @@
     if (t2) { const tp = [B + 0.15, p.D2 + 0.12]; s += ring(t2) + lab(...toward(t2, ...tp), ...tp, 'T2'); }
     // ---- dimensions ----
     // top T
-    s += ext(F, p.C, p.H, p.C, p.H + 0.32) + ext(F, p.C + p.T, p.H, p.C + p.T, p.H + 0.32);
-    s += dimH(F, p.C, p.C + p.T, p.H + 0.26, 'T=' + f2(p.T));
+    s += ext(F, p.C + fS1(p), p.H, p.C + fS1(p), p.H + 0.32) + ext(F, (p.C + fS1(p) + p.T), p.H, (p.C + fS1(p) + p.T), p.H + 0.32);
+    s += dimH(F, p.C + fS1(p), (p.C + fS1(p) + p.T), p.H + 0.26, 'T=' + f2(p.T));
     // bottom chains
     for (const x of [0, p.C, p.C + p.S, B]) s += ext(F, x, 0, x, y1 - 0.06);
     s += ext(F, 0, 0, 0, y2 - 0.06) + ext(F, B, 0, B, y2 - 0.06);
@@ -226,7 +229,7 @@
     }
     // left vertical chain
     const xl1 = -0.24 * L - 0.08, xl2 = -0.36 * L - 0.2;
-    for (const y of [-p.Kd, 0, p.D2, yb, p.H]) s += ext(F, y === p.H ? p.C : 0, y, xl1 - 0.05, y);
+    for (const y of [-p.Kd, 0, p.D2, yb, p.H]) s += ext(F, y === p.H ? p.C + fS1(p) : 0, y, xl1 - 0.05, y);
     s += dimV(F, xl1, -p.Kd, 0, p.Kd > 0 ? 'Kd=' + f2(p.Kd) : '', -1) + dimV(F, xl1, 0, p.D2, 'D2=' + f2(p.D2), -1);
     if (p.D1 > 0) s += dimV(F, xl1, p.D2, yb, 'D1', -1);
     s += dimV(F, xl1, yb, p.H, 'h=' + f2(g.h), -1);
@@ -246,21 +249,23 @@
 
   /* ---------------- 作用力分塊編號示意圖（固定比例） ---------------- */
   function blocks() {
-    const C = 0.8, S = 0.6, T = 0.3, E = 2.0, B = C + S + E, D2 = 0.5, D1 = 0.2, H = 3.6, yb = D1 + D2, ta = 0.35, Y = 1.15;
-    const Ws = B - C - T, Kc = 1.75, Ks = 0.3, Kd = 0.3;
+    const C = 0.8, S = 0.8, T = 0.3, F1 = 0.22, E = 2.0, B = C + S + E, D2 = 0.5, D1 = 0.2, H = 3.6, yb = D1 + D2, ta = 0.35, Y = 1.15;
+    const xt = C + F1 + T, Ws = B - xt, Kc = 1.75, Ks = 0.3, Kd = 0.3, fx = y => C + F1 * (y - yb) / (H - yb);
     const F = frame(-0.35, B + 0.35, -Kd - 0.15, H + Ws * ta + 0.2, 420);
     const conc = 'fill="var(--concrete)" fill-opacity=".55"', soil = 'fill="var(--soil)" fill-opacity=".35"';
     const poly = (pts, st) => `<polygon points="${F.P(pts)}" ${st} stroke="var(--ink)" stroke-width="1"/>`;
     const lab = (x, y, t) => `<text x="${F.X(x)}" y="${F.Y(y) + 5}" text-anchor="middle" class="bn">${t}</text>`;
     let s = `<svg viewBox="0 0 ${F.W} ${F.H.toFixed(0)}" class="draw" role="img" aria-label="作用力分塊編號示意圖">${defs}`;
-    s += poly([[C + T, H], [B, H], [B, H + Ws * ta]], soil);                       // 9
-    s += poly([[C + T, H], [C + S, yb], [C + S, H]], soil);                        // 10
+    s += poly([[xt, H], [B, H], [B, H + Ws * ta]], soil);                          // 9
+    s += poly([[xt, H], [C + S, yb], [C + S, H]], soil);                           // 10
     s += poly([[C + S, yb], [B, yb], [B, H], [C + S, H]], soil);                   // 8
     s += poly([[C + S, yb], [B, D2], [B, yb]], soil);                              // 11
     s += poly([[0, D2], [C, yb], [C, Y], [0, Y]], soil);                           // 12
+    s += poly([[C, yb], [fx(Y), Y], [C, Y]], soil);                                // 16
     s += `<rect x="${F.X(0)}" y="${F.Y(Y + 0.28)}" width="${F.X(C) - F.X(0)}" height="${F.Y(Y) - F.Y(Y + 0.28)}" fill="var(--water)" fill-opacity=".25" stroke="var(--water)" stroke-dasharray="4 3"/>`; // 13
-    s += poly([[C, yb], [C + T, yb], [C + T, H], [C, H]], conc);                   // 1
-    s += poly([[C + T, yb], [C + S, yb], [C + T, H]], conc);                       // 7
+    s += poly([[C + F1, yb], [xt, yb], [xt, H], [C + F1, H]], conc);              // 1
+    s += poly([[C, yb], [C + F1, yb], [C + F1, H]], conc);                         // 15
+    s += poly([[xt, yb], [C + S, yb], [xt, H]], conc);                             // 7
     s += poly([[C, 0], [C + S, 0], [C + S, yb], [C, yb]], conc);                   // 2
     s += poly([[0, 0], [C, 0], [C, D2], [0, D2]], conc);                           // 3
     s += poly([[C + S, 0], [B, 0], [B, D2], [C + S, D2]], conc);                   // 4
@@ -268,12 +273,14 @@
     s += poly([[C + S, D2], [B, D2], [C + S, yb]], conc);                          // 6
     s += poly([[Kc, 0], [Kc + Ks, 0], [Kc + Ks, -Kd], [Kc, -Kd]], conc);
     s += grass(F, -0.3, 0, Y);
-    s += `<line class="gl" x1="${F.X(C + T)}" y1="${F.Y(H)}" x2="${F.X(B + 0.3)}" y2="${F.Y(H + (B + 0.3 - C - T) * ta)}"/>`;
-    s += lab(C + T / 2, H * 0.62, 1) + lab(C + S / 2, yb / 2, 2) + lab(C / 2, D2 / 2, 3) + lab(C + S + E / 2, D2 / 2, 4)
-      + lab(C * 0.66, D2 + D1 * 0.3, 5) + lab(C + S + E / 3, D2 + D1 * 0.3, 6) + lab(C + T + (S - T) / 3, yb + 0.6, 7)
-      + lab(C + S + E / 2, (yb + H) / 2, 8) + lab(C + T + Ws * 0.7, H + Ws * ta * 0.3, 9) + lab(C + T + 2 * (S - T) / 3, H - 0.55, 10)
-      + lab(C + S + E * 0.75, yb - D1 * 0.3, 11) + lab(C / 2, (D2 + Y) / 2 + 0.05, 12) + lab(C / 2, Y + 0.14, 13) + lab(Kc + Ks / 2, -Kd / 2, 14);
-    s += `<text class="cap" x="${F.W - 6}" y="14" text-anchor="end">編號對應作用力總表 (1)~(14)</text>`;
+    s += `<line class="gl" x1="${F.X(xt)}" y1="${F.Y(H)}" x2="${F.X(B + 0.3)}" y2="${F.Y(H + (B + 0.3 - xt) * ta)}"/>`;
+    const Sb = C + S - xt;
+    s += lab(C + F1 + T / 2, H * 0.62, 1) + lab(C + S / 2, yb / 2, 2) + lab(C / 2, D2 / 2, 3) + lab(C + S + E / 2, D2 / 2, 4)
+      + lab(C * 0.66, D2 + D1 * 0.3, 5) + lab(C + S + E / 3, D2 + D1 * 0.3, 6) + lab(xt + Sb / 3, yb + 0.6, 7)
+      + lab(C + S + E / 2, (yb + H) / 2, 8) + lab(xt + Ws * 0.7, H + Ws * ta * 0.3, 9) + lab(xt + 2 * Sb / 3, H - 0.55, 10)
+      + lab(C + S + E * 0.75, yb - D1 * 0.3, 11) + lab(C / 2, (D2 + Y) / 2 + 0.05, 12) + lab(C / 2, Y + 0.14, 13) + lab(Kc + Ks / 2, -Kd / 2, 14)
+      + lab(C + 2 * F1 / 3, yb + 1.7, 15) + `<line x1="${F.X(C + 0.012)}" y1="${F.Y(Y - 0.12)}" x2="${F.X(C - 0.05)}" y2="${F.Y(Y + 0.5)}" stroke="var(--ink)" stroke-width="1.2"/>` + lab(C - 0.1, Y + 0.56, 16);
+    s += `<text class="cap" x="${F.W - 6}" y="14" text-anchor="end">編號對應作用力總表 (1)~(16)</text>`;
     return s + '</svg>';
   }
 
