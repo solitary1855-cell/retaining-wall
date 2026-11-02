@@ -387,8 +387,7 @@
       ${row('S8', 'S8', false, null, 'S8', mn('S8').Asr, mn('S8').Asp, mn('S8').ok, null)}
       ${row('T1', 'T1', false, null, '2×T1', mn('T1').Asr, mn('T1').Asp, mn('T1').ok, null)}
       ${row('T2', 'T2', false, null, '2×T2', mn('T2').Asr, mn('T2').Asp, mn('T2').ok, null)}
-    </tbody></table></div>
-    <p class="note">深度 H 為牆身檢核斷面距牆頂深度；S4、S5 需求量取踵版、趾版各檢核斷面中最不利者。</p>`;
+    </tbody></table></div>`;
   }
   function barTable() {
     const rows = [['S1', '牆身主筋'], ['S2', '牆身補強'], ['S3', '牆身補強'], ['S4', '基礎版上層 S4、S6'], ['S5', '基礎版下層 S5、S7'], ['S8', '暴露面垂直筋'], ['T1', '牆身水平筋'], ['T2', '基礎溫度筋']];
