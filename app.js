@@ -248,6 +248,16 @@
       <tr><td>地盤最大反力 (tf/m²)</td><td class="num">${n(X.qmax)}</td><td class="num">qu = ${n(X.qu)}</td><td></td></tr>
     </tbody></table></div>`;
   }
+  // 計算書 2.3／2.4：穩定分析結果表（檢核項目／規範值／計算值／檢核結果／備註）
+  function stabTable(X, elim) {
+    const ck = (b, s) => `<span class="ck${b ? '' : ' ng'}">${s}　${b ? 'OK!' : 'NG!'}</span>`;
+    return `<div class="scroll"><table class="t stab"><thead><tr><th colspan="2">檢核項目</th><th>規範值</th><th>計算值</th><th>檢核結果</th><th>備註</th></tr></thead><tbody>
+      <tr><td rowspan="2">牆體傾覆</td><td>安全係數 FS</td><td>${n(X.fso)}</td><td>${n(X.FSo)}</td><td>${ck(X.okO, '≧ ' + n(X.fso, 1))}</td><td class="rm">Mr = ${n(X.Mr)} tf-m，Md = ${n(X.Md)} tf-m</td></tr>
+      <tr><td>偏心距 e (m)</td><td>${n(o.g.B / elim)}</td><td>${n(Math.abs(X.e))}</td><td>${ck(X.okE, '≦ B/' + elim)}</td><td class="rm">B/${elim} = ${n(o.g.B / elim)} m，e = ${n(X.e)} m</td></tr>
+      <tr><td>基礎容許支承力</td><td>安全係數 FS</td><td>${n(X.fsb)}</td><td>${n(X.FSb)}</td><td>${ck(X.okB, '≧ ' + n(X.fsb, 1))}</td><td class="rm">qu = ${n(X.qu)} tf/m²，qmax = ${n(X.qmax)} tf/m²</td></tr>
+      <tr><td>牆體滑動</td><td>安全係數 FS</td><td>${n(X.fss)}</td><td>${n(X.FSs)}</td><td>${ck(X.okS, '≧ ' + n(X.fss, 1))}</td><td class="rm">Hu = ${n(X.Hu)} tf，Hd = ${n(X.SH)} tf</td></tr>
+    </tbody></table></div>`;
+  }
   let o;
   function summary() {
     const v = document.getElementById('verdict');
@@ -385,8 +395,8 @@
     const kaMeth = N.kaOvr ? '指定值' : p.kam === 'rankine' ? 'Rankine' : 'Coulomb';
     const inclLab = !N.kaOvr && p.kam === 'rankine' ? 'α' : 'δ+θ';
     const kpeLab = Q.kpeOvr ? 'KPE（指定值）' : p.kpem === 'rankine0' ? 'KPE = tan²(45 + ϕ/2)（Rankine）' : p.kpem === 'rankine' ? `KPE（擬靜態 Rankine，δ = θ = α = 0，φ = ${n(Q.vphi)}°）` : `KPE（第7.3.5節 Mononobe-Okabe，θ = α = 0，δ = ${n(Q.deltaPE, 1)}°，φ = ${n(Q.vphi)}°）`;
-    let h = `<p class="note">${p.id || ''}　H = ${n(p.H)} m</p>
-    <h2>1. 設計依據</h2>
+    let h = `<h1 class="rtitle">擋土牆設計及分析計算（H = <b class="hv">${n(p.H)}</b> m）</h1>${p.id ? `<p class="rid">計算書編號：${p.id}</p>` : ''}
+    <h2>1. 設計依據</h2><div class="sec-in">
     <h3>1.1 材料參數</h3>
     <div class="scroll"><table class="t"><thead><tr><th></th><th>γ (tf/m³)</th><th>γ′ = γ − γw (tf/m³)</th><th>ϕ (度)</th><th>c (tf/m²)</th></tr></thead><tbody>
       <tr><td>回填土（γ2、γ2′、ϕ2、c2）</td><td>${n(p.gB)}</td><td>${n(o.g.g2s)}</td><td>${n(p.phiB, 1)}</td><td>${n(p.cB)}</td></tr>
@@ -418,7 +428,7 @@
       <tr><td>抗承載</td><td>${n(p.fsb_n, 1)}</td><td>${n(p.fsb_e, 1)}</td></tr></tbody></table></div>
     <p class="note">依建築物基礎構造設計規範(112) 第7.4.1節（滑動）、第7.4.2節（傾覆）、第7.4.3節（支承力）；公路橋梁設計規範 第6.2.8節。</p>
     <h3>1.7 保護層</h3>${eq("保護層厚度 d'", n(p.cover, 1), 'cm')}
-    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ2：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ = (δ/ϕ2)·ϕ2：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${eq('被動牆面摩擦角比 δp/ϕ1：常時 ／ 地震時', n(P.deltaRP, 3) + ' / ' + n(P.deltaRPE, 3), '')}${eq('被動牆面摩擦角 δp = (δp/ϕ1)·ϕ1：常時 ／ 地震時', n(o.dpN, 1) + ' / ' + n(o.dpE, 1), '度')}${kTable()}${N.ck && !N.ck.inRange ? '<p class="note">※ 承載層 ϕ 超出圖-解7.3-1 表列範圍（10°～45°），以邊界值計算。</p>' : ''}${N.ck && N.ck.outChart ? '<p class="note">※ 承載層 ϕ 大於 38°，圖-解7.3-1 θ = 0° 曲線已超出圖框，Kp(δ/ϕ=−1) 改以 tan²(45+ϕ/2)/R(δ=0) 反推。</p>' : ''}${p.kpm !== 'rankine' && Q.deltaP > 2 * p.phiF / 3 + 1e-9 ? '<p class="note">※ δp 大於 2ϕ1/3，第7.3.3節解說3規定設計採用之牆面摩擦角不宜大於 2ϕ/3。</p>' : ''}
+    <h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ2：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ = (δ/ϕ2)·ϕ2：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${eq('被動牆面摩擦角比 δp/ϕ1：常時 ／ 地震時', n(P.deltaRP, 3) + ' / ' + n(P.deltaRPE, 3), '')}${eq('被動牆面摩擦角 δp = (δp/ϕ1)·ϕ1：常時 ／ 地震時', n(o.dpN, 1) + ' / ' + n(o.dpE, 1), '度')}${kTable()}${N.ck && !N.ck.inRange ? '<p class="note">※ 承載層 ϕ 超出圖-解7.3-1 表列範圍（10°～45°），以邊界值計算。</p>' : ''}${N.ck && N.ck.outChart ? '<p class="note">※ 承載層 ϕ 大於 38°，圖-解7.3-1 θ = 0° 曲線已超出圖框，Kp(δ/ϕ=−1) 改以 tan²(45+ϕ/2)/R(δ=0) 反推。</p>' : ''}${p.kpm !== 'rankine' && Q.deltaP > 2 * p.phiF / 3 + 1e-9 ? '<p class="note">※ δp 大於 2ϕ1/3，第7.3.3節解說3規定設計採用之牆面摩擦角不宜大於 2ϕ/3。</p>' : ''}</div>
 
     <h2>2. 擋土牆設計尺寸及分析結果</h2>
     <h3>2.1 擋土牆設計尺寸</h3>
@@ -431,8 +441,8 @@
       ${[['(18) 牆身前底寬 S1', g.S1f], ['(19) 牆身後底寬 S2', g.S2b]].map(([a, b]) => `<tr><td>${a} (m)</td><td>${n(b)}</td></tr>`).join('')}</tbody></table></div></div>
     <div class="dimimg"><div class="dimmask" role="img" aria-label="擋土牆設計尺寸示意圖"></div><img class="dimprint" src="wall-dims-v3.png" alt=""></div></div>
     <h3>2.2 擋土牆配筋設計</h3>${barTable()}
-    <h3>2.3 常時，穩定分析結果</h3>${sumTable(N, 6)}
-    <h3>2.4 地震時，穩定分析結果</h3>${sumTable(Q, 3)}
+    <h3>2.3 穩定分析結果（常時）</h3>${stabTable(N, 6)}
+    <h3>2.4 穩定分析結果（地震時）</h3>${stabTable(Q, 3)}
 
     <h2>3. 穩定分析（常時）</h2>
     <p class="note">穩定分析時，將擋土牆本身及趾（踵）版上方之填土視為一整體。</p>
@@ -490,6 +500,12 @@
     ${o.rc.slice(3).map(rcReport).join('')}
     ${[o.min[2]].map(m => `<h4>(3) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}`;
     document.getElementById('report').innerHTML = h;
+    // 數值儲存格標記（列印時以藍字表示）
+    document.querySelectorAll('#report table.t td').forEach(td => { if (/^\s*[-−+]?[\d.,]+(\s*\/\s*[-−+]?[\d.,]+)*\s*$/.test(td.textContent)) td.classList.add('nv'); });
+    // 列印頁尾：計算書編號-頁碼（比照計算書排版）
+    let ps = document.getElementById('pageFoot'); if (!ps) { ps = document.createElement('style'); ps.id = 'pageFoot'; document.head.appendChild(ps); }
+    const fid = String(P.id || 'RW').replace(/["\\]/g, '');
+    ps.textContent = `@page { @bottom-right { content: "${fid}-" counter(page); font: italic 9pt 'Times New Roman', serif; color: #000; } }`;
   }
 
   function run() {

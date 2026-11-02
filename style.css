@@ -262,3 +262,59 @@ details.grp > summary::-webkit-details-marker { display: none; }
 .figtog summary { cursor: pointer; color: var(--accent); font-size: 13.5px; }
 .figtog img { display: block; width: 100%; height: auto; margin-top: 8px; background: #fff; border-radius: 4px; }
 @media print { .figtog { display: none; } }
+
+/* 計算書標題 */
+.report .rtitle { font-size: 20px; margin: 0 0 4px; }
+.report .rtitle .hv { color: var(--accent); }
+.report .rid { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
+
+/* ---------- 列印：比照工程顧問計算書排版 ---------- */
+@media print {
+  @page { size: A4; margin: 14mm 14mm 16mm 16mm; }
+  .report, .report table.t, .report .eq, .report .note, .report p, .report h4 {
+    font-family: "Times New Roman", "PMingLiU", "新細明體", "MingLiU", "Noto Serif TC", "Noto Serif CJK TC", serif; }
+  .report { font-size: 10.5pt; line-height: 1.35; color: #000; }
+  .report .rtitle { font-size: 16pt; font-weight: 700; margin: 0 0 2mm; letter-spacing: .02em; }
+  .report .rtitle .hv { color: #e00000; font-weight: 700; }
+  .report .rid { font-size: 9pt; color: #000; margin: 0 0 4mm; }
+  .report h2 { font-size: 13pt; font-weight: 700; border: 0; padding: 0; margin: 4mm 0 2mm; color: #000; }
+  .report h1 + .rid + h2, .report h1 + h2 { break-before: auto; }
+  .report h3 { font-size: 11pt; font-weight: 700; color: #000; margin: 3.5mm 0 1.5mm 3mm; }
+  .report h4 { font-size: 10.5pt; font-weight: 700; margin: 2.5mm 0 1mm 6mm; }
+  .report > :not(h1):not(h2):not(h3):not(h4):not(.rid), .report .sec-in > :not(h3) { margin-left: 7mm; }
+  .report .sec-in { margin-left: 0 !important; }
+  .report p, .report .note { font-size: 9.5pt; color: #000; }
+  /* 數值：藍色；輸入值（設計依據）加黃底 */
+  .report .eq { border: 0; padding: .4mm 0; grid-template-columns: minmax(0, 1fr) auto 22mm; gap: 0 3mm; }
+  .report .eq .v { font-family: "Times New Roman", serif; color: #0000e0; }
+  .report .eq .u { color: #000; font-size: 9.5pt; }
+  .report .eq.key .v { color: #0000e0; font-weight: 700; border: 1px solid #000; padding: 0 2mm; }
+  .report .sec-in .eq .v, .report .sec-in table.t td:not(:first-child) { background: #ffff99; }
+  .report .sec-in .eq .v { padding: 0 2mm; }
+  /* 表格：黑色全格線，表頭淡綠底 */
+  .report table.t { font-size: 9.5pt; margin: 1mm 0 2.5mm; width: auto; min-width: 60%; }
+  .report table.t th, .report table.t td { border: 1px solid #000; padding: .6mm 2mm; color: #000; }
+  .report table.t th { background: #ccffcc; font-weight: 400; }
+  .report table.t td.nv { color: #0000e0; }
+  .report table.stab td { text-align: center; }
+  .report table.stab td.rm { text-align: left; }
+  .report .ck { display: inline-block; border: 1px solid #000; padding: 0 2mm; white-space: nowrap; color: #000 !important; font-weight: 400; }
+  .report .ck.ng { color: #e00000 !important; }
+  .report .dimtab table.t { width: 100%; }
+  .report .scroll { overflow: visible; }
+  /* 檢核結果 */
+  .tag { border-radius: 0; background: none !important; border: 1px solid #000; color: #000 !important; font-weight: 400; padding: 0 2mm; }
+  .tag.ng { color: #e00000 !important; }
+  .tag::after { content: "!"; }
+  /* 作用力總表：表格全寬，分塊圖置於下方 */
+  .sidefig { flex-direction: column !important; gap: 2mm; }
+  .sf-fig { flex: none !important; width: 70mm; border: 0; padding: 0; }
+  .sf-main { width: 100%; }
+  .dimimg { max-width: 85mm; }
+}
+
+/* 穩定分析結果表（畫面） */
+.report table.stab td { text-align: center; }
+.report table.stab td.rm { text-align: left; font-size: 12.5px; }
+.report .ck { white-space: nowrap; font-weight: 600; color: var(--ok); }
+.report .ck.ng { color: var(--ng); }
