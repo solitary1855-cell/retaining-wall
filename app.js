@@ -204,7 +204,7 @@
       ${gen && faults.length ? `<div class="srow ind sfault">${faults.join('、')}</div>` : ''}
       <div class="srow ind sss" id="siteSS"></div>
       <div class="srow">地盤分類 <select data-site="cls" ${tpe ? 'disabled' : ''}>${CLS.map(([v, t]) => `<option value="${v}" ${+P.siteClass === v ? 'selected' : ''}>${t}</option>`).join('')}</select><span class="sref">第2.5節</span></div>
-      ${gen && faults.length ? `<table class="sft"><thead><tr><th>斷層名稱</th><th>近斷層距離 R (km)</th></tr></thead><tbody>${faults.map(f => `<tr><td>${f}</td><td><input data-site="r" data-fault="${esc(f)}" inputmode="decimal" value="${P.faultR && P.faultR[f] != null ? P.faultR[f] : ''}" placeholder="≥ 14"></td></tr>`).join('')}</tbody></table><p class="hint">R 為工址至中央地質調查所公布斷層地表跡線之最短水平距離；空白視為 R ≥ 14 km（取表2-1值）。多條斷層各參數取最大值（第2.4節）。</p>` : ''}
+      ${gen && faults.length ? `<table class="sft"><thead><tr><th>斷層名稱</th><th>近斷層距離 R (km)</th></tr></thead><tbody>${faults.map(f => `<tr><td>${f}</td><td><input data-site="r" data-fault="${esc(f)}" inputmode="decimal" value="${P.faultR && P.faultR[f] != null ? P.faultR[f] : ''}" placeholder="≥ 14"></td></tr>`).join('')}</tbody></table><p class="hint">R 為工址至中央地質調查所公布斷層地表跡線之最短水平距離；空白視為 R ≥ 14 km（取表2-1值）。任一斷層 R < 14 km 為近斷層工址，否則依一般工址計算 PGAv。多條斷層各參數取最大值（第2.4節）。</p>` : ''}
       <div class="srow"><label class="rad"><input type="radio" name="siteMode" data-site="mode" value="manual" ${m === 'manual' ? 'checked' : ''}> 手動輸入 PGAh、PGAv</label></div>
       <div id="siteOut" class="siteout"></div></div>`;
   }

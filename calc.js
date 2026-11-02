@@ -456,7 +456,8 @@
       // 多條斷層取各參數最大值（第2.4節解說）
       st.adj = {};
       for (const k of ['SSD', 'S1D', 'SSM', 'S1M']) st.adj[k] = Math.max(st.base[k], ...st.faults.map(f => f.v[k]));
-      st.near = st.faults.length > 0;
+      // 近斷層工址：任一斷層距離 R < 14 km；R ≥ 14 km 或未輸入者依一般工址
+      st.near = st.faults.some(f => f.r !== null && f.r < 14);
       st.Fa = lin(S.Fa.ss, S.Fa.c[cls], st.adj.SSD); st.Fv = lin(S.Fv.s1, S.Fv.c[cls], st.adj.S1D);
       st.SDS = st.Fa * st.adj.SSD; st.SD1 = st.Fv * st.adj.S1D;
       st.FaM = lin(S.Fa.ss, S.Fa.c[cls], st.adj.SSM); st.FvM = lin(S.Fv.s1, S.Fv.c[cls], st.adj.S1M);
