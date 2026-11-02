@@ -529,12 +529,16 @@
     <h4>d. 作用力總表</h4><div class="sidefig"><div class="sf-main">${forceTable(o.items, Q.ext, 'e')}</div><div class="sf-fig">${RWDraw.blocks()}</div></div>
     ${stabReport(Q, 4, 3, kpeLab, Q.kpeOvr ? '' : P.kpem === 'rankine0' ? '' : P.kpem === 'rankine' ? FX_KPER : FX_KPE)}
 
-    <h2>5. 配筋設計（USD）</h2>
+    <h2>5. 配筋設計（採用 USD 法設計）</h2>
     <h3>5.1 設計條件</h3>
-    <div class="conds"><p>1. 牆身與基礎交界為剛性區。</p><p>2. 牆身、趾版及踵版視為懸臂梁（公路橋梁設計規範 6.2.2、6.2.3）。</p>
-    <p>3. 地震時土壓動態增量作用點依牆體變位模式（${o.mv.name}，第7.3.4節解說2，以斷面深度 z 取代 H），${P.stemInert === false ? '不計牆身慣性力' : '並計入牆身慣性力'}。</p><p>4. 基礎版依地盤反力分 40 等分條帶，沿版長逐斷面計算 V、M；配筋時地盤反力以因數化載重（各分項乘載重係數）重新計算，版底揚壓力（${o.base.upUni ? '均佈：踵版 γw·Hw1、趾版 γw·Hw2' : '梯形分布，同穩定分析 Pb'}）乘 F 係數自版上載重扣除。踵版、趾版均分別檢核正、反向彎矩（上層、下層鋼筋），剪力取各斷面絕對值最大者。${o.heelSino ? '踵版配筋層：M = ∫(地盤反力 − 版上載重)·力臂，最大值配頂層筋 S4、最小值配底層筋 S5。' : ''}</p>
-    <p class="keep">5. 載重組合（${o.cf.name}）：常時 ${o.cf.combN}；地震時 ${o.cf.combE}。${o.cf.note || ''}多組組合時取最不利者。</p></div>
-    ${eq("m = fy/0.85fc'（D13 以上）", n(o.m, 3), '')}${eq('ρmin（D13 以上）', n(o.rhoMin, 4), '')}<p class="note">主筋含 D10 之斷面以 fy = ${n(p.fy10, 0)} kgf/cm² 計算 m 與 ρmin。</p>
+    ${(() => { const k = o.stemK, phiTxt = r => Math.abs(r) < 1e-9 ? '0' : Math.abs(r - 0.5) < 1e-9 ? 'ϕ/2' : Math.abs(r - 2 / 3) < 1e-6 ? '2ϕ/3' : Math.abs(r - 1 / 3) < 1e-6 ? 'ϕ/3' : n(r, 3) + 'ϕ';
+      const rN = k.dN / N.phi, rE = k.dE / N.phi;
+      return `<div class="conds c51">
+      <p>1. 牆身與基礎交界為剛性區。</p>
+      <p>2. 牆身、基礎趾端、基礎踵端均視為承受橫向載重之懸臂梁分析。</p>
+      <p>3. 牆身材料強度：<span class="c51t"><span>混凝土抗壓強度，fc' = <b class="hl">${n(p.fc, 0)}</b> kgf/cm²</span><span>鋼筋降伏強度，fy = <b class="hl">${n(p.fy, 0)}</b> kgf/cm²</span></span></p>
+      <p>4. 土壓力直接作用於牆背上，牆身與土壤之界面摩擦角：　δ = ${phiTxt(rN)}（平時）；δ = ${phiTxt(rE)}（地震時）</p>
+      <p>5. 主動土壓力係數：平時，Ka = <b class="hl">${n(k.Ka, 3)}</b>　　地震時，Kae = <b class="hl">${n(k.Kae, 3)}</b></p></div>`; })()}
     <h3>5.2 牆身設計</h3>${(() => { const k = o.stemK; return eq(`設計用牆背摩擦角 δ：常時 ／ 地震時${k.ovrN || k.ovrE ? '（另行指定）' : '（同穩定分析）'}`, n(k.dN, 1) + ' / ' + n(k.dE, 1), '度') + eq('Ka ／ KAE', n(k.Ka, 3) + ' / ' + n(k.Kae, 3), '') + eq(k.cos ? '水平係數 Ka·cos(δ+θ) ／ KAE·(1+kv)·cos(δ+θ)' : '水平係數 Ka ／ KAE·(1+kv)（不乘 cos(δ+θ)）', n(o.KAH, 3) + ' / ' + n(o.KAEH, 3), ''); })()}${o.rc.slice(0, 3).map(rcReport).join('')}
     ${o.min.slice(0, 2).map((m, i) => `<h4>(${i + 4}) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}
     <h3>5.3 基礎版設計</h3>

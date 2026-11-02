@@ -341,3 +341,9 @@ details.grp > summary::-webkit-details-marker { display: none; }
 
 /* 5.1 設計條件：依編號分行，懸掛縮排 */
 .report .conds p { margin: 2px 0; padding-left: 1.4em; text-indent: -1.4em; }
+
+/* 5.1 設計條件（比照計算書） */
+.report .c51 p { padding-left: 1.2em; text-indent: -1.2em; }
+.report .c51t { display: inline-flex; flex-direction: column; vertical-align: top; text-indent: 0; margin-left: .6em; }
+.report .hl { font-family: var(--mono); font-weight: 600; color: var(--accent); padding: 0 .4em; }
+@media print { .report .hl { background: #e6e6e6; color: #e00000; font-weight: 400; } }
