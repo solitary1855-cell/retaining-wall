@@ -10,6 +10,9 @@
     [9.9,5.6,3.3],[10.4,6.0,3.6],[10.9,6.5,4.0],[11.4,7.1,4.4],[13.2,8.3,5.4],[15.3,9.8,6.6],[17.9,11.7,8.4],
     [20.9,14.1,10.6],[24.7,17.0,13.7],[29.3,20.8,17.8],[35.1,25.5,23.2],[42.2,31.6,30.5],[51.2,39.6,41.4],
     [62.5,49.8,57.6],[77.0,63.4,80.0],[95.7,81.2,114.0]];
+  // 竹節鋼筋標稱直徑 (mm) 與單位重 (kg/m)，CNS 560
+  const BDIA = { 10: 9.53, 13: 12.7, 16: 15.9, 19: 19.1, 22: 22.2, 25: 25.4, 29: 28.7, 32: 32.2, 36: 35.8 };
+  const BWT = { 10: 0.560, 13: 0.994, 16: 1.56, 19: 2.25, 22: 3.04, 25: 3.98, 29: 5.08, 32: 6.39, 36: 7.90 };
   const BARS = { 10: 0.7133, 13: 1.267, 16: 1.986, 19: 2.865, 22: 3.871, 25: 5.067, 29: 6.469, 32: 8.143, 36: 10.07 };
   const CODES = {
     // 配筋載重組合分項係數（每種狀況可有多組，取最不利）：
@@ -50,7 +53,7 @@
     qs: 1.14, hw1r: 0, hw2: null,
     fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, pwRed: 1, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
-    cover: 7.5, dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni', heelSino: true, rcVer: 1, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
+    cover: 7.5, dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni', heelSino: true, rcVer: 1, ldhM: 'new', wallL: null, stockL: 12, workPct: 0, lossPct: 0, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
     preset: '', T: 0.30, H: 2.00, C: 0.00, Sf: 0, Sb: 0.10, S: 0.40, eta1: 0, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
@@ -417,7 +420,83 @@
     const checks = [N.okO, N.okE, N.okB, N.okS, Q.okO, Q.okE, Q.okB, Q.okS, Q.okCrit,
       ...o.rc.map(r => r.okV && r.okM), ...o.min.map(m => m.ok)];
     o.allOK = checks.every(Boolean);
+    o.qty = quantities(p, o, g);
     return o;
+  }
+
+  // ---------- 鋼筋數量（112年混凝土結構設計規範 第25章） ----------
+  function quantities(p, o, g) {
+    const q = {}, c = p.cover, fc = p.fc, sfc = Math.sqrt(fc), B = g.B, h = g.h, yb = p.D1 + p.D2;
+    q.ldhM = p.ldhM === 'old' ? 'old' : 'new';
+    q.stockL = +p.stockL > 0 ? +p.stockL : 12;
+    q.work = +p.workPct || 0; q.loss = +p.lossPct || 0;
+    q.wallL = +p.wallL > 0 ? +p.wallL : null;
+    const fyOf = D => D <= 10 ? p.fy10 : p.fy;
+    // 各號數之伸展長度 (cm)
+    q.dev = {};
+    // 同號數取最小間距判定 ψr
+    const minS = {}; for (const k of Object.keys(p.bars)) { const b = p.bars[k]; if (b.s > 0) minS[b.D] = Math.min(minS[b.D] ?? Infinity, b.s); }
+    const dev = D => {
+      const key = D, s = minS[D]; if (q.dev[key]) return q.dev[key];
+      const db = BDIA[D] / 10, fy = fyOf(D), K = D <= 19 ? 6.6 : 5.3;
+      const ld1 = Math.max(30, fy * 1.0 / (K * sfc) * db);           // 表25.4.2.3，ψt = ψe = λ = 1.0
+      const ld13 = Math.max(30, fy * 1.3 / (K * sfc) * db);          // 頂層鋼筋 ψt = 1.3
+      const psiC = fc < 420 ? fc / 1050 + 0.6 : 1.0;
+      const psiR = s > 0 && s >= 6 * db ? 1.0 : 1.6;                 // 表25.4.3.2：s ≥ 6db 取 1.0
+      const ldhNew = Math.max(fy * 1.0 * psiR * 1.0 * psiC / (23 * sfc) * db ** 1.5, 8 * db, 15);   // 25.4.3.1（ψe = ψo = λ = 1.0）
+      const oldOK = D <= 25 ? fc <= 700 : D <= 29 ? fc <= 490 : D <= 32 ? fc <= 420 : fc <= 350;   // 25.4.3.5
+      const ldhOld = Math.max(0.075 * fy / sfc * db, 8 * db, 15);    // 式(25.4.3.7)
+      const ldh = q.ldhM === 'old' ? ldhOld : ldhNew;
+      const bend = D <= 25 ? 6 : D <= 36 ? 8 : 10;                   // 表25.3.1 彎曲內直徑 (×db)
+      const hook = (12 + bend / 2 + 1) * db;                          // 90°彎鉤外緣尺寸：直線延伸 12db + D/2 + db
+      return (q.dev[key] = { D, db, fy, s, ld1, ld13, psiC, psiR, ldhNew, ldhOld, oldOK, ldh, lap: Math.max(30, 1.3 * ld1), bend, hook });
+    };
+    const bar = k => p.bars[k];
+    const rows = [], chk = [];
+    const add = (k, label, segs, n, note) => {
+      const b = bar(k); if (!b || !(b.s > 0) || !(n > 0)) return;
+      const L = segs.reduce((a, x) => a + x[1], 0) / 100;   // m
+      rows.push({ k, label, D: b.D, s: b.s, segs, L, n, Lm: L * n, wt: BWT[b.D], kg: L * n * BWT[b.D], note });
+    };
+    const db5 = BDIA[bar('S5').D] / 10, db4 = BDIA[bar('S4').D] / 10;
+    const zb = c + db5;                        // 牆身筋下端（坐落於底層筋上）距基底 (cm)
+    const sl2 = Math.sqrt(1 + g.eta ** 2), sl1 = Math.sqrt(1 + g.eta1 ** 2);
+    const embed = yb * 100 - zb;               // 牆身筋伸入基礎長度（自基礎頂面）
+    // S1 牆背主筋（全高）
+    for (const [k, L] of [['S1', null], ['S2', bar('S2').L], ['S3', bar('S3').L]]) {
+      const b = bar(k); if (!(b.s > 0) || (k !== 'S1' && !(L > 0))) continue;
+      const d = dev(b.D), top = k === 'S1' ? p.H * 100 - c : (yb + L) * 100;
+      const vert = top - zb;
+      add(k, k === 'S1' ? '牆背主筋' : '牆背補強筋', [['直線段（含牆背斜率）', vert * sl2], ['底端 90° 彎鉤', d.hook]], 100 / b.s);
+      chk.push({ k, pos: `${k} 伸入基礎（彎鉤錨定）`, req: d.ldh, avail: embed, ok: embed >= d.ldh - 1e-9 });
+    }
+    // S8 暴露面垂直筋
+    { const b = bar('S8'), d = dev(b.D); add('S8', '暴露面垂直筋', [['直線段（含牆前斜率）', (p.H * 100 - c - zb) * sl1], ['底端 90° 彎鉤', d.hook]], 100 / b.s); }
+    // S4 基礎上層、S5 基礎下層（全寬，兩端 90° 彎鉤）
+    const topBar = yb * 100 - c > 30;          // 頂層鋼筋：其下新澆混凝土厚度 > 30 cm，ψt = 1.3
+    { const b = bar('S4'), d = dev(b.D);
+      add('S4', '基礎版上層（S4、S6）', [['水平段 B − 2c', B * 100 - 2 * c], ['兩端 90° 彎鉤', 2 * d.hook]], 100 / b.s);
+      const need = topBar ? d.ld13 : d.ld1, av = p.E * 100 - c;
+      chk.push({ k: 'S4', pos: `S4 踵版側錨定（自牆背面，直線${topBar ? '，頂層 ψt = 1.3' : ''}）`, req: need, avail: av, ok: av >= need - 1e-9, alt: av >= d.ldh - 1e-9 ? '彎鉤錨定可' : '' }); }
+    { const b = bar('S5'), d = dev(b.D);
+      add('S5', '基礎版下層（S5、S7）', [['水平段 B − 2c', B * 100 - 2 * c], ['兩端 90° 彎鉤', 2 * d.hook]], 100 / b.s);
+      if (p.C > 0.05) { const av = p.C * 100 - c; chk.push({ k: 'S5', pos: 'S5 趾版側錨定（自牆前面，彎鉤）', req: d.ldh, avail: av, ok: av >= d.ldh - 1e-9 }); } }
+    // T1 牆身水平筋（兩面）、T2 基礎縱向筋（上下兩層）：沿牆長連續，依定尺長度計入乙級搭接
+    const lapF = d => q.stockL * 100 / (q.stockL * 100 - d.lap);
+    { const b = bar('T1'), d = dev(b.D), nf = Math.floor((h * 100 - c) / b.s) + 1;
+      add('T1', '牆身水平筋（兩面）', [['每米 1.00 m × 搭接係數', 100 * lapF(d)]], 2 * nf, `每面 ${nf} 支，搭接 ${(d.lap).toFixed(0)} cm／定尺 ${q.stockL} m`); }
+    { const b = bar('T2'), d = dev(b.D), nf = Math.floor((B * 100 - 2 * c) / b.s) + 1;
+      add('T2', '基礎縱向筋（上下兩層）', [['每米 1.00 m × 搭接係數', 100 * lapF(d)]], 2 * nf, `每層 ${nf} 支，搭接 ${(d.lap).toFixed(0)} cm／定尺 ${q.stockL} m`); }
+    q.rows = rows; q.chk = chk;
+    q.sub = rows.reduce((a, r) => a + r.kg, 0);
+    q.wk = q.sub * q.work / 100;
+    q.ls = (q.sub + q.wk) * q.loss / 100;          // 連乘：小計 ×(1+工作筋%)×(1+損耗%)
+    q.tot = q.sub * (1 + q.work / 100) * (1 + q.loss / 100);
+    q.fac = (1 + q.work / 100) * (1 + q.loss / 100);
+    const bySize = {}; for (const r of rows) bySize[r.D] = (bySize[r.D] || 0) + r.kg;
+    q.bySize = Object.keys(bySize).map(Number).sort((a, b) => a - b).map(D => ({ D, kg: bySize[D], tot: bySize[D] * q.fac }));
+    q.devList = Object.values(q.dev).sort((a, b) => a.D - b.D);
+    return q;
   }
 
   function stability(X, p, g, sfx, elim) {

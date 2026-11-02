@@ -133,7 +133,12 @@
       ['dStemN', '牆身配筋常時 δ/ϕ2（空白=同穩定分析）', '', 'opt'], ['dStemE', '牆身配筋地震時 δ/ϕ2（空白=同穩定分析）', '', 'opt'],
       ['stemCos', '牆身配筋土壓取水平分量 cos(δ+θ)', '', 'bool'], ['stemInert', '牆身配筋計入牆身慣性力', '', 'bool'],
       ['heelSino', '踵版彎矩最大值配頂層筋', '', 'bool'], ['upMode', '基礎版底揚壓力分布', '', 'select', [['uni', '均佈（踵版 γw·Hw1、趾版 γw·Hw2）'], ['trap', '梯形（同穩定分析 Pb）']]]],
-      hint: '預設：牆身配筋常時 δ = ϕ2/2、地震時 δ = 0，土壓係數直接作為水平係數（不乘 cos），地震時不計牆身慣性力；踵版扣除均佈揚壓力 γw·Hw1；基礎版需要鋼筋量不小於 ρt/2（ρt 為基礎溫度鋼筋比）；踵版以 M = ∫(地盤反力 − 版上載重)·力臂 之最大值配頂層筋、最小值配底層筋（選「否」則依懸臂受拉側配筋）。超載側壓均不乘 cos。' }
+      hint: '預設：牆身配筋常時 δ = ϕ2/2、地震時 δ = 0，土壓係數直接作為水平係數（不乘 cos），地震時不計牆身慣性力；踵版扣除均佈揚壓力 γw·Hw1；基礎版需要鋼筋量不小於 ρt/2（ρt 為基礎溫度鋼筋比）；踵版以 M = ∫(地盤反力 − 版上載重)·力臂 之最大值配頂層筋、最小值配底層筋（選「否」則依懸臂受拉側配筋）。超載側壓均不乘 cos。' },
+    { t: '10. 鋼筋量計算', f: [
+      ['ldhM', '彎鉤伸展長度 ℓdh 計算式', '', 'select', [['new', '新式（第25.4.3.1節）'], ['old', '舊式（第25.4.3.7節）']]],
+      ['wallL', '牆長（空白=僅計每米）', 'm', 'opt'], ['stockL', '鋼筋定尺長度', 'm'],
+      ['workPct', '工作筋', '%'], ['lossPct', '損耗', '%']],
+      hint: '依112年建築物混凝土結構設計規範第25章：伸展長度 ℓd 採表25.4.2.3 簡化式；標準彎鉤依表25.3.1（90° 彎鉤直線延伸 12db）；彎鉤伸展長度 ℓdh 預設採第25.4.3.1節新式，可切換為第25.4.3.7節舊式；水平筋、縱向筋依定尺長度計入乙級搭接 1.3ℓd。合計 = 小計 ×(1 + 工作筋%)×(1 + 損耗%)。' }
 
   ];
 
@@ -280,6 +285,51 @@
       frag.append(v.slice(k)); t.replaceWith(frag);
     }
   }
+  // ---------- 6. 鋼筋量計算 ----------
+  function qtyReport() {
+    const q = o.qty, f1 = v => n(v, 1);
+    let t = `<h2>6. 鋼筋量計算</h2>
+    <h3>6.1 計算條件</h3>
+    ${eq("混凝土強度 fc' ／ 鋼筋降伏強度 fy（D13 以上）／ fy（D10）", `${n(P.fc, 0)} / ${n(P.fy, 0)} / ${n(P.fy10, 0)}`, 'kgf/cm²')}
+    ${eq("保護層 d'", n(P.cover, 1), 'cm')}
+    ${eq('彎鉤伸展長度 ℓdh', q.ldhM === 'old' ? '舊式（第25.4.3.7節）' : '新式（第25.4.3.1節）', '')}
+    ${eq('鋼筋定尺長度', n(q.stockL, 1), 'm')}
+    ${eq('工作筋 ／ 損耗', `${n(q.work, 1)} / ${n(q.loss, 1)}`, '%')}
+    ${eq('牆長', q.wallL ? n(q.wallL, 2) : '未輸入（僅計每米）', q.wallL ? 'm' : '')}
+    <p class="note">修正因數：ψe = 1.0（無塗布）、λ = 1.0（常重混凝土）；ℓd 之 ψt 一般取 1.0，頂層鋼筋（其下新澆混凝土厚度大於 30 cm）取 1.3；ℓdh 之 ψo = 1.0（牆、版沿牆長連續，側向保護層充足），ψr 依鋼筋間距 s ≥ 6db 取 1.0，否則 1.6。</p>
+    <h3>6.2 伸展長度、搭接長度及標準彎鉤（第25.3、25.4、25.5節）</h3>
+    <div class="scroll"><table class="t"><thead><tr><th>號數</th><th>db (cm)</th><th>fy</th><th>ℓd (cm)<br>ψt = 1.0</th><th>ℓd (cm)<br>ψt = 1.3</th><th>ψc ／ ψr</th><th>ℓdh 新式 (cm)</th><th>ℓdh 舊式 (cm)</th><th>乙級搭接 1.3ℓd (cm)</th><th>90° 彎鉤長 (cm)</th></tr></thead><tbody>
+    ${q.devList.map(d => `<tr><td>D${d.D}</td><td>${n(d.db, 2)}</td><td>${n(d.fy, 0)}</td><td>${f1(d.ld1)}</td><td>${f1(d.ld13)}</td><td>${n(d.psiC, 3)} / ${n(d.psiR, 1)}</td><td>${f1(d.ldhNew)}</td><td>${d.oldOK ? f1(d.ldhOld) : '不適用'}</td><td>${f1(d.lap)}</td><td>${f1(d.hook)}</td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="note">ℓd = fy·ψt·ψe/(K·λ·√fc')·db，D19 以下 K = 6.6、D22 以上 K = 5.3，且不小於 30 cm（表25.4.2.3）。ℓdh 新式 = fy·ψe·ψr·ψo·ψc/(23·λ·√fc')·db^1.5（db 以 cm 計），舊式 = 0.075·ψe·fy·db/√fc'，均不小於 8db 及 15 cm。90° 彎鉤長為外緣尺寸：直線延伸 12db + 彎曲內直徑/2 + db（D10～D25 內直徑 6db，D29～D36 為 8db，表25.3.1）。搭接長度 = max(1.3ℓd, 30 cm)（表25.5.2.1 乙級）。</p>
+    <h3>6.3 錨定長度檢核</h3>
+    <div class="scroll"><table class="t"><thead><tr><th>位置</th><th>需求長度 (cm)</th><th>可用長度 (cm)</th><th>結果</th></tr></thead><tbody>
+    ${q.chk.map(c => `<tr><td>${c.pos}</td><td>${f1(c.req)}</td><td>${f1(c.avail)}</td><td>${tag(c.ok)}</td></tr>`).join('')}
+    </tbody></table></div>
+    <h3>6.4 鋼筋數量表（每公尺牆長）</h3>
+    <div class="scroll"><table class="t qty"><thead><tr><th>編號</th><th>說明</th><th>號數</th><th>間距 (cm)</th><th>單支長度組成 (cm)</th><th>單支長度 (m)</th><th>支數 (支/m)</th><th>長度 (m/m)</th><th>單位重 (kg/m)</th><th>重量 (kg/m)</th></tr></thead><tbody>
+    ${q.rows.map(r => `<tr><td>${r.k}</td><td>${r.label}${r.note ? `<br><span class="note">${r.note}</span>` : ''}</td><td>D${r.D}</td><td>${r.s}</td><td class="segs">${r.segs.map(x => `${x[0]} ${f1(x[1])}`).join('<br>')}</td><td>${n(r.L, 2)}</td><td>${n(r.n, 2)}</td><td>${n(r.Lm, 2)}</td><td>${n(r.wt, 3)}</td><td>${n(r.kg, 2)}</td></tr>`).join('')}
+    <tr class="sum"><td colspan="9">小計</td><td>${n(q.sub, 2)}</td></tr>
+    <tr><td colspan="9">工作筋 ${n(q.work, 1)}%</td><td>${n(q.wk, 2)}</td></tr>
+    <tr><td colspan="9">損耗 ${n(q.loss, 1)}%（小計 + 工作筋）× 損耗%</td><td>${n(q.ls, 2)}</td></tr>
+    <tr class="sum"><td colspan="9">合計 = 小計 ×(1 + 工作筋%)×(1 + 損耗%)</td><td>${n(q.tot, 2)}</td></tr>
+    </tbody></table></div>
+    <h3>6.5 依號數彙總</h3>
+    <div class="scroll"><table class="t"><thead><tr><th>號數</th><th>小計 (kg/m)</th><th>合計 (kg/m)</th>${q.wallL ? `<th>全長合計 (kg)</th><th>全長合計 (t)</th>` : ''}</tr></thead><tbody>
+    ${q.bySize.map(b => `<tr><td>D${b.D}</td><td>${n(b.kg, 2)}</td><td>${n(b.tot, 2)}</td>${q.wallL ? `<td>${n(b.tot * q.wallL, 1)}</td><td>${n(b.tot * q.wallL / 1000, 3)}</td>` : ''}</tr>`).join('')}
+    <tr class="sum"><td>合計</td><td>${n(q.sub, 2)}</td><td>${n(q.tot, 2)}</td>${q.wallL ? `<td>${n(q.tot * q.wallL, 1)}</td><td>${n(q.tot * q.wallL / 1000, 3)}</td>` : ''}</tr>
+    </tbody></table></div>`;
+    return t;
+  }
+  // 計算書分頁（畫面）：1～4、5、6
+  let curRT = '1';
+  try { curRT = localStorage.getItem('rw-rt') || '1'; } catch (e) {}
+  function showRT(k) {
+    curRT = k; try { localStorage.setItem('rw-rt', k); } catch (e) {}
+    document.querySelectorAll('#report .rt').forEach(d => d.classList.toggle('on', d.dataset.rt === k));
+    document.querySelectorAll('.rtabs button').forEach(b => b.classList.toggle('on', b.dataset.rt === k));
+  }
+  document.querySelectorAll('.rtabs button').forEach(b => b.onclick = () => showRT(b.dataset.rt));
   let o;
   function summary() {
     const v = document.getElementById('verdict');
@@ -440,7 +490,7 @@
     const inclLab = !N.kaOvr && p.kam === 'rankine' ? 'α' : 'δ+θ';
     const kpeLab = Q.kpeOvr ? 'KPE（指定值）' : p.kpem === 'rankine0' ? 'KPE = tan²(45 + ϕ/2)（Rankine）' : p.kpem === 'rankine' ? `KPE（擬靜態 Rankine，δ = θ = α = 0，φ = ${n(Q.vphi)}°）` : `KPE（第7.3.5節 Mononobe-Okabe，θ = α = 0，δ = ${n(Q.deltaPE, 1)}°，φ = ${n(Q.vphi)}°）`;
     let h = `<h1 class="rtitle">擋土牆設計及分析計算（H = <b class="hv">${n(p.H)}</b> m）</h1>${p.id ? `<p class="rid">計算書編號：${p.id}</p>` : ''}
-    <h2>1. 設計依據</h2><div class="sec-in">
+    <div class="rt" data-rt="1"><h2>1. 設計依據</h2><div class="sec-in">
     <h3>1.1 材料參數</h3>
     <div class="scroll"><table class="t"><thead><tr><th></th><th>γ (tf/m³)</th><th>γ′ = γ − γw (tf/m³)</th><th>ϕ (度)</th><th>c (tf/m²)</th></tr></thead><tbody>
       <tr><td>回填土（γ2、γ2′、ϕ2、c2）</td><td>${n(p.gB)}</td><td>${n(o.g.g2s)}</td><td>${n(p.phiB, 1)}</td><td>${n(p.cB)}</td></tr>
@@ -529,7 +579,7 @@
     <h4>d. 作用力總表</h4><div class="sidefig"><div class="sf-main">${forceTable(o.items, Q.ext, 'e')}</div><div class="sf-fig">${RWDraw.blocks()}</div></div>
     ${stabReport(Q, 4, 3, kpeLab, Q.kpeOvr ? '' : P.kpem === 'rankine0' ? '' : P.kpem === 'rankine' ? FX_KPER : FX_KPE)}
 
-    <h2><span class="scr-only">5. 配筋設計（USD）</span><span class="prt-only">5. 配筋設計（採用 USD 法設計）</span></h2>
+    </div><div class="rt" data-rt="2"><h2><span class="scr-only">5. 配筋設計（USD）</span><span class="prt-only">5. 配筋設計（採用 USD 法設計）</span></h2>
     <h3>5.1 設計條件</h3>
     <div class="scr-only">
     <div class="conds"><p>1. 牆身與基礎交界為剛性區。</p><p>2. 牆身、趾版及踵版視為懸臂梁（公路橋梁設計規範 6.2.2、6.2.3）。</p>
@@ -555,7 +605,9 @@
     <p class="note">踵版：w = LV·q0 + D·(q1 + q2) − F·γw·h − q（向下為正，正彎矩上層受拉）；趾版：w = q + F·γw·h − D·q2（向上為正，正彎矩下層受拉）。q 為因數化地盤反力。</p>
     ${o.rc.slice(3).map(rcReport).join('')}
     ${[o.min[2]].map(m => `<h4>(3) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}`;
+    h += `</div><div class="rt" data-rt="3">${qtyReport()}</div>`;
     document.getElementById('report').innerHTML = h;
+    showRT(curRT);
     markCodeRefs(document.getElementById('report'));
     // 數值儲存格標記（列印時以藍字表示）
     document.querySelectorAll('#report table.t td').forEach(td => { if (/^\s*[-−+]?[\d.,]+(\s*\/\s*[-−+]?[\d.,]+)*\s*$/.test(td.textContent)) td.classList.add('nv'); });
