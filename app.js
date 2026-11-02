@@ -5,15 +5,15 @@
   let P = load() || clone(RW.DEFAULTS);
 
   function load() {
-    try { const s = localStorage.getItem(KEY); if (s) return fix(Object.assign(clone(RW.DEFAULTS), JSON.parse(s))); } catch (e) {}
+    try { const s = localStorage.getItem(KEY); if (s) { const raw = JSON.parse(s); return fix(Object.assign(clone(RW.DEFAULTS), raw), raw); } } catch (e) {}
     return null;
   }
-  function fix(q) {
+  function fix(q, raw = q) {
     if (!['coulomb', 'ck', 'ckc'].includes(q.kpm)) q.kpm = 'rankine';
     delete q.deltaP;   // 已移除「被動牆面摩擦角 δp」，改採 δ
     if ('wt' in q) { if (!q.wt && +q.hw2 === 0) q.hw2 = null; delete q.wt; }   // 已移除「基底位於地下水位下」，改由 Hw2 判斷
     if (q.heelSino === undefined) q.heelSino = true;
-    if (!q.rcVer) { Object.assign(q, { dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni' }); q.rcVer = 1; }   // 配筋預設值更新
+    if (!raw.rcVer) { Object.assign(q, { dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni' }); q.rcVer = 1; }   // 配筋預設值更新
     return q; }  // 已移除「範例沿用法」
   function save() { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) {} }
 
@@ -515,7 +515,7 @@
   };
   document.getElementById('fileLoad').onchange = e => {
     const f = e.target.files[0]; if (!f) return;
-    f.text().then(t => { P = fix(Object.assign(clone(RW.DEFAULTS), JSON.parse(t))); save(); buildForm(); fmtSymbols(form); run(); }).catch(() => alert('檔案格式錯誤'));
+    f.text().then(t => { const raw = JSON.parse(t); P = fix(Object.assign(clone(RW.DEFAULTS), raw), raw); save(); buildForm(); fmtSymbols(form); run(); }).catch(() => alert('檔案格式錯誤'));
     e.target.value = '';
   };
   document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
