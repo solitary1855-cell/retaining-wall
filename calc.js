@@ -47,7 +47,7 @@
     // 預設條件比照「道路工程參考圖」R-008：回填土 γ=1.9、活載重相當 60cm 土重、Z=0.33、f'c=210、牆背設濾層洩水（不計水位）；
     // 承載層採緊密礫石級配（R-008 附註10：承載力不足時挖除以礫石級配回填）
     gB: 1.9, phiB: 30, cB: 0, gF: 2.1, phiF: 38, cF: 0, gC: 2.4, gW: 1.0,
-    qs: 1.14, qsType: 'L', hw1r: 0, hw2: null,
+    qs: 1.14, hw1r: 0, hw2: null,
     fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, pwRed: 1, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
     cover: 7.5, dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni', heelSino: true, rcVer: 1, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
@@ -123,11 +123,8 @@
     const pwRed = p.pwRed === undefined || p.pwRed === null || !isFinite(p.pwRed) ? 1 : +p.pwRed;   // 牆背動水壓折減係數（解說4 可取 0.7）
     const o = { p };
     const cf0 = CODES[p.code] || CODES.hw;
-    // 超載性質：L＝活載重（依 L 係數）；D＝永久載重（垂直分量歸 D、側壓歸 H）
-    const qsPerm = p.qsType === 'D';
-    const adj = f => qsPerm ? { ...f, LV: f.D, LH: f.H } : f;
-    const cf = { ...cf0, cn: cf0.cn.map(adj), ce: cf0.ce.map(adj) };
-    if (p.code === 'c112' && qsPerm) { cf.combN = '1.2D + 1.6H（另以 0.9D 檢核；超載歸 D、H）'; cf.combE = '1.2D + 1.0E + 1.6H、0.9D + 1.0E + 1.6H（超載歸 D、H）'; }
+    // 牆背地表超載 qs 一律視為活載重 L（依 L 係數）
+    const cf = { ...cf0 };
     o.cf = cf;
     // geometry
     const g = o.g = {};

@@ -12,6 +12,7 @@
     if (!['coulomb', 'ck', 'ckc'].includes(q.kpm)) q.kpm = 'rankine';
     delete q.deltaP;   // 已移除「被動牆面摩擦角 δp」，改採 δ
     if ('wt' in q) { if (!q.wt && +q.hw2 === 0) q.hw2 = null; delete q.wt; }   // 已移除「基底位於地下水位下」，改由 Hw2 判斷
+    delete q.qsType;   // 超載一律為活載重 L
     if (q.heelSino === undefined) q.heelSino = true;
     if (!raw.rcVer) { Object.assign(q, { dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni' }); q.rcVer = 1; }   // 配筋預設值更新
     return q; }  // 已移除「範例沿用法」
@@ -98,8 +99,7 @@
       ['deltaRPE', '地震時被動牆面摩擦角比 δp/ϕ1', ''], ['=dpE', '地震時 δp = (δp/ϕ1)·ϕ1', '度']],
       hint: 'δ 為牆背（回填土側）主動土壓之牆面摩擦角，以回填土 ϕ2 計算；δp 為止滑榫前緣被動土壓之牆面摩擦角，以承載層 ϕ1 計算。' },
     { t: '3. 地表超載重及地下水位', f: [
-      ['qs', '牆背地表超載 qs', 'tf/m²'],
-      ['qsType', '超載性質（配筋載重組合）', '', 'select', [['L', '活載重 L'], ['D', '永久載重（歸 D、H）']]],
+      ['qs', '牆背地表超載 qs（活載重 L）', 'tf/m²'],
       ['hw1r', '牆背水位比 Hw1/H', ''], ['=hw1', '牆背水位 Hw1', 'm'],
       ['hw2', '牆前水位 Hw2（自基底）', 'm', 'opt'], ['=g1', '基底下 B 範圍平均單位重', 'tf/m³']],
       hint: 'Hw2 空白＝無地下水；正值＝基底以上水深；負值＝水位位於基底以下之深度。基礎版底面以上土壤採回填土參數（γ2、ϕ2、c2），以下採承載層參數（γ1、ϕ1、c1）；水位以下採浸水單位重 γ2′ = γ2 − γw、γ1′ = γ1 − γw。基底下 B 範圍平均單位重供式(4.3-1) 第三項使用，自動計算。' },
@@ -391,8 +391,7 @@
       <tr><td>承載層（γ1、γ1′、ϕ1、c1）</td><td>${n(p.gF)}</td><td>${n(o.g.g1s)}</td><td>${n(p.phiF, 1)}</td><td>${n(p.cF)}</td></tr>
       <tr><td>混凝土</td><td>${n(p.gC)}</td><td>NA</td><td>NA</td><td>NA</td></tr></tbody></table></div>
     <h3>1.2 地表超載重及地下水位</h3>
-    ${eq('牆背地表超載 qs', n(p.qs), 'tf/m/m')}
-    ${eq('超載性質（配筋載重組合）', p.qsType === 'D' ? '永久載重（歸 D、H）' : '活載重 L', '')}
+    ${eq('牆背地表超載 qs（活載重 L）', n(p.qs), 'tf/m/m')}
     ${eq(`牆背地下水位 Hw1 = ${n(p.hw1r, 3)} × H`, n(o.hw1), 'm')}
     ${eq('牆前地下水位 Hw2（自基礎底面；負值表示位於基底以下）', o.hw2 === null ? '無地下水' : n(o.hw2), o.hw2 === null ? '' : 'm')}
     ${eq('基底下 B 範圍平均單位重（式(4.3-1) 第三項）' + ({ dry: '：γ1（水位位於基底下 B 以深或無地下水）', sub: '：γ1′ = γ1 − γw（基底位於水位以下）', mix: `：γ1m = γ1′ + (dw/B)·γw，dw = ${n(o.g.dw)} m` })[o.g.g1mode], n(o.g.g1), 'tf/m³')}
@@ -477,7 +476,7 @@
     <h3>5.1 設計條件</h3>
     <p>1. 牆身與基礎交界為剛性區。2. 牆身、趾版及踵版視為懸臂梁（公路橋梁設計規範 6.2.2、6.2.3）。
     3. 地震時土壓動態增量作用點依牆體變位模式（${o.mv.name}，第7.3.4節解說2，以斷面深度 z 取代 H），${P.stemInert === false ? '不計牆身慣性力' : '並計入牆身慣性力'}。4. 基礎版依地盤反力分 40 等分條帶，沿版長逐斷面計算 V、M；配筋時地盤反力以因數化載重（各分項乘載重係數）重新計算，版底揚壓力（均佈或同穩定分析 Pb 之梯形分布，見第9節）乘 F 係數自版上載重扣除。踵版、趾版均分別檢核正、反向彎矩（上層、下層鋼筋），剪力取各斷面絕對值最大者。${o.heelSino ? '踵版配筋層：M = ∫(地盤反力 − 版上載重)·力臂，最大值配頂層筋 S4、最小值配底層筋 S5。' : ''}
-    5. 載重組合（${o.cf.name}）：常時 ${o.cf.combN}；地震時 ${o.cf.combE}。${o.cf.note ? o.cf.note + (P.qsType === 'D' ? '本案超載視為永久載重，垂直分量歸 D、側壓歸 H。' : '') : ''}多組組合時取最不利者。</p>
+    5. 載重組合（${o.cf.name}）：常時 ${o.cf.combN}；地震時 ${o.cf.combE}。${o.cf.note || ''}多組組合時取最不利者。</p>
     ${eq("m = fy/0.85fc'（D13 以上）", n(o.m, 3), '')}${eq('ρmin（D13 以上）', n(o.rhoMin, 4), '')}<p class="note">主筋含 D10 之斷面以 fy = ${n(p.fy10, 0)} kgf/cm² 計算 m 與 ρmin。</p>
     <h3>5.2 牆身設計</h3>${(() => { const k = o.stemK; return eq(`設計用牆背摩擦角 δ：常時 ／ 地震時${k.ovrN || k.ovrE ? '（另行指定）' : '（同穩定分析）'}`, n(k.dN, 1) + ' / ' + n(k.dE, 1), '度') + eq('Ka ／ KAE', n(k.Ka, 3) + ' / ' + n(k.Kae, 3), '') + eq(k.cos ? '水平係數 Ka·cos(δ+θ) ／ KAE·(1+kv)·cos(δ+θ)' : '水平係數 Ka ／ KAE·(1+kv)（不乘 cos(δ+θ)）', n(o.KAH, 3) + ' / ' + n(o.KAEH, 3), ''); })()}${o.rc.slice(0, 3).map(rcReport).join('')}
     ${o.min.slice(0, 2).map((m, i) => `<h4>(${i + 4}) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}
