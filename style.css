@@ -369,7 +369,7 @@ details.grp > summary::-webkit-details-marker { display: none; }
 @media print {
   .rtabs { display: none !important; }
   .report .rt { display: block !important; }
-  .report .rt[data-rt="2"], .report .rt[data-rt="3"] { break-before: page; }
+  .report .rt:not([data-rt="1"]) { break-before: page; }
   .report .rt > h2:first-child { break-before: auto; }
   .report table.qty td.segs { font-size: 8.5pt; }
   .report table.qty td:nth-child(2) { min-width: 30mm; }

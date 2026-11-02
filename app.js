@@ -323,9 +323,10 @@
   }
   // 計算書分頁（畫面）：1～4、5、6
   let curRT = '1';
-  try { curRT = localStorage.getItem('rw-rt') || '1'; } catch (e) {}
+  try { curRT = localStorage.getItem('rw-rt6') || '1'; } catch (e) {}
+  if (!/^[1-6]$/.test(curRT)) curRT = '1';
   function showRT(k) {
-    curRT = k; try { localStorage.setItem('rw-rt', k); } catch (e) {}
+    curRT = k; try { localStorage.setItem('rw-rt6', k); } catch (e) {}
     document.querySelectorAll('#report .rt').forEach(d => d.classList.toggle('on', d.dataset.rt === k));
     document.querySelectorAll('.rtabs button').forEach(b => b.classList.toggle('on', b.dataset.rt === k));
   }
@@ -524,7 +525,7 @@
     <h3>1.7 保護層</h3>${eq("保護層厚度 d'", n(p.cover, 1), 'cm')}
     <div class="sec18"><h3>1.8 土壓力參數</h3>${eq('牆背摩擦角比 δ/ϕ2：常時 ／ 地震時', n(p.deltaR, 3) + ' / ' + n(p.deltaRE, 3), '')}${eq('牆背摩擦角 δ = (δ/ϕ2)·ϕ2：常時 ／ 地震時', n(N.delta, 1) + ' / ' + n(Q.delta, 1), '度')}${eq('被動牆面摩擦角比 δp/ϕ1：常時 ／ 地震時', n(P.deltaRP, 3) + ' / ' + n(P.deltaRPE, 3), '')}${eq('被動牆面摩擦角 δp = (δp/ϕ1)·ϕ1：常時 ／ 地震時', n(o.dpN, 1) + ' / ' + n(o.dpE, 1), '度')}${kTable()}${N.ck && !N.ck.inRange ? '<p class="note">※ 承載層 ϕ 超出圖-解7.3-1 表列範圍（10°～45°），以邊界值計算。</p>' : ''}${N.ck && N.ck.outChart ? '<p class="note">※ 承載層 ϕ 大於 38°，圖-解7.3-1 θ = 0° 曲線已超出圖框，Kp(δ/ϕ=−1) 改以 tan²(45+ϕ/2)/R(δ=0) 反推。</p>' : ''}${p.kpm !== 'rankine' && Q.deltaP > 2 * p.phiF / 3 + 1e-9 ? '<p class="note">※ δp 大於 2ϕ1/3，第7.3.3節解說3規定設計採用之牆面摩擦角不宜大於 2ϕ/3。</p>' : ''}</div></div>
 
-    <h2>2. 擋土牆設計尺寸及分析結果</h2>
+    </div><div class="rt" data-rt="2"><h2>2. 擋土牆設計尺寸及分析結果</h2>
     <h3>2.1 擋土牆設計尺寸</h3>
     <div class="dimrow"><div class="dimtab">    <div class="scroll"><table class="t"><tbody>
       ${[['(1) 牆身頂寬 T', p.T], ['(2) 牆體全高 H', p.H], ['(3) 牆身高度 h = H − D1 − D2', g.h], ['(4) 基礎寬度 B = C + S + E', g.B], ['(5) 基礎趾長 C', p.C],
@@ -538,7 +539,7 @@
     <h3>2.3 穩定分析結果（地震時）</h3>${stabTable(Q, 3)}
     <h3>2.4 擋土牆配筋設計</h3>${rebarTable()}
 
-    <h2>3. 穩定分析（常時）</h2>
+    </div><div class="rt" data-rt="3"><h2>3. 穩定分析（常時）</h2>
     <p class="note">穩定分析時，將擋土牆本身及趾（踵）版上方之填土視為一整體。</p>
     <h3>3.1 作用力計算</h3>
     <h4>a. 土壓力（${kaMeth === '指定值' ? '主動土壓力係數指定值' : kaMeth + ' 主動土壓力係數'}）</h4>
@@ -557,7 +558,7 @@
     <h4>d. 作用力總表</h4><div class="sidefig"><div class="sf-main">${forceTable(o.items, N.ext, 'n')}</div><div class="sf-fig">${RWDraw.blocks()}</div></div>
     ${stabReport(N, 3, 6, kpLab)}
 
-    <h2>4. 穩定分析（地震時）</h2>
+    </div><div class="rt" data-rt="4"><h2>4. 穩定分析（地震時）</h2>
     <h3>4.1 動態主動土壓力（建築物基礎構造設計規範(112) 第7.3.4節，${P.kaem === 'rankine' ? '擬靜態 Rankine' : 'Mononobe-Okabe'}）</h3>
     <p class="note">ϕ 為牆背土壤內摩擦角，φ 為地震合成角；θ 為牆背面與垂直面交角（逆時針為正），α 為牆背地表面與水平面之交角。本法原則上只適用於非凝聚性土壤。</p>
     ${eq(`φ = tan⁻¹[kh/(1+kv)] = tan⁻¹[${n(P.kh, 3)}/(1+${Q.kvPhi === 0 ? '0' : n(-Q.kvPhi, 3)})]` + (P.kvPhi0 === false ? '' : '（kv ＝ 0）'), n(Q.vphi), '度')}
@@ -579,7 +580,7 @@
     <h4>d. 作用力總表</h4><div class="sidefig"><div class="sf-main">${forceTable(o.items, Q.ext, 'e')}</div><div class="sf-fig">${RWDraw.blocks()}</div></div>
     ${stabReport(Q, 4, 3, kpeLab, Q.kpeOvr ? '' : P.kpem === 'rankine0' ? '' : P.kpem === 'rankine' ? FX_KPER : FX_KPE)}
 
-    </div><div class="rt" data-rt="2"><h2><span class="scr-only">5. 配筋設計（USD）</span><span class="prt-only">5. 配筋設計（採用 USD 法設計）</span></h2>
+    </div><div class="rt" data-rt="5"><h2><span class="scr-only">5. 配筋設計（USD）</span><span class="prt-only">5. 配筋設計（採用 USD 法設計）</span></h2>
     <h3>5.1 設計條件</h3>
     <div class="scr-only">
     <div class="conds"><p>1. 牆身與基礎交界為剛性區。</p><p>2. 牆身、趾版及踵版視為懸臂梁（公路橋梁設計規範 6.2.2、6.2.3）。</p>
@@ -605,7 +606,7 @@
     <p class="note">踵版：w = LV·q0 + D·(q1 + q2) − F·γw·h − q（向下為正，正彎矩上層受拉）；趾版：w = q + F·γw·h − D·q2（向上為正，正彎矩下層受拉）。q 為因數化地盤反力。</p>
     ${o.rc.slice(3).map(rcReport).join('')}
     ${[o.min[2]].map(m => `<h4>(3) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}`;
-    h += `</div><div class="rt" data-rt="3">${qtyReport()}</div>`;
+    h += `</div><div class="rt" data-rt="6">${qtyReport()}</div>`;
     document.getElementById('report').innerHTML = h;
     showRT(curRT);
     markCodeRefs(document.getElementById('report'));
