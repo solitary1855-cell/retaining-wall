@@ -564,6 +564,7 @@
     <h3>1.4 材料設計強度</h3>
     ${eq("混凝土強度 fc'", n(p.fc, 0), 'kgf/cm²')}${eq('鋼筋降伏強度 fy（D13 以上）', n(p.fy, 0), 'kgf/cm²')}${eq('鋼筋降伏強度 fy（D10）', n(p.fy10, 0), 'kgf/cm²')}
     <h3>1.5 地震係數</h3>
+    <div class="scr-only">
     ${(() => { const st = o.site; if (!st) return '';
       if (st.mode === 'tpe') return eq('工址：臺北盆地微分區（表2-6(c)）', st.zone, '') + eq('工址短週期設計水平譜加速度係數 SDS ／ 轉角週期 T0D', n(st.SDS, 2) + ' / ' + n(st.T0, 2), '—, 秒');
       let t = eq('工址（表2-1）', `${st.county} ${st.town}`, '') + eq('地盤分類（第2.5節）', CLS.find(c => c[0] === st.cls)[1], '')
@@ -575,9 +576,12 @@
     ${o.site ? eq('PGAh = 0.4·SDS（設計地震，回歸期 475 年）', n(o.site.pgaH, 3), 'g') + eq(`PGAv = ${o.site.vr === 0 ? '0' : o.site.vr > 0.6 ? '2/3' : '1/2'} × PGAh（${o.site.vrNote}）`, n(o.site.pgaV, 3), 'g') : ''}
     ${o.site ? '' : eq('地表水平向 ／ 垂直向尖峰加速度 PGAh ／ PGAv', n(p.pgaH, 3) + ' / ' + n(p.pgaV, 3), 'g')}
     ${eq(`kh 建議值 = ${p.khRes ? '1.5' : '0.5'} × PGAh${p.khRes ? '（側向位移完全受限）' : ''} ／ kv 建議值 = 0.5 × PGAv`, n(o.khS, 3) + ' / ' + n(o.kvS, 3), '')}
+    </div>
     ${eq('採用 kh ／ kv（kv 向下為正）', n(p.kh, 3) + ' / ' + n(p.kv, 3), p.kh < o.khS - 1e-9 ? '※ kh 小於規範解說建議值' : '')}
+    <div class="scr-only">
     ${eq('牆體變位模式', o.mv.name, '')}
     <p class="note">依建築物基礎構造設計規範(112) 第7.3.4節解說3。</p>
+    </div>
     <h3>1.6 安全係數</h3>
     <div class="scroll"><table class="t"><thead><tr><th></th><th>常時</th><th>地震時</th></tr></thead><tbody>
       <tr><td>抗滑動</td><td>${n(p.fss_n, 1)}</td><td>${n(p.fss_e, 1)}</td></tr>
