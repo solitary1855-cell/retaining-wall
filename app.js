@@ -12,6 +12,7 @@
     if (!['coulomb', 'ck', 'ckc'].includes(q.kpm)) q.kpm = 'rankine';
     delete q.deltaP;   // 已移除「被動牆面摩擦角 δp」，改採 δ
     if ('wt' in q) { if (!q.wt && +q.hw2 === 0) q.hw2 = null; delete q.wt; }   // 已移除「基底位於地下水位下」，改由 Hw2 判斷
+    if (raw.Sf === undefined) { delete q.Sf; delete q.Sb; RW.syncDims(q); }   // 改以 S1、S2 輸入
     delete q.qsType;   // 超載一律為活載重 L
     if (q.heelSino === undefined) q.heelSino = true;
     if (!raw.rcVer) { Object.assign(q, { dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni' }); q.rcVer = 1; }   // 配筋預設值更新
@@ -35,10 +36,12 @@
     { J: 8.5, S1: [29, 30], S2: [29, 30, 563], S4: [32, 15], S5: [22, 30], S8: [19, 30] },
     { J: 9.0, S1: [32, 30], S2: [32, 30, 593], S4: [25, 7.5], S5: [22, 30], S8: [19, 30] }  // ① 2-D25@15 以 D25@7.5 計
   ];
-  const DIMK = ['T', 'H', 'C', 'S', 'E', 'D1', 'D2', 'Kd', 'Kc', 'Df', 'Ks', 'eta1'];
+  const DIMK = ['T', 'H', 'C', 'Sf', 'Sb', 'E', 'D1', 'D2', 'Kd', 'Kc', 'Df', 'Ks'];
   function applyPreset(h) {
     const q = PRESETS.find(x => String(x.H) === h); if (!q) return;
     DIMK.forEach(k => { P[k] = q[k] ?? 0; });
+    P.Sf = 0; P.Sb = +(q.S - q.T).toFixed(3);   // R-008 牆前垂直，牆背斜面寬 = S − T
+    RW.syncDims(P);
     const hs = +(q.H - q.D1 - q.D2).toFixed(2);
     // 取 R-008 表二中牆身高 J ≥ 本牆身高之最小一欄（偏保守）
     const rb = RBARS.find(x => x.J >= hs - 1e-6) || RBARS[RBARS.length - 1];
@@ -83,12 +86,12 @@
     { t: '1. 擋土牆設計尺寸', open: true, f: [
       ['preset', '建議尺寸（選擇牆高 H）', '', 'select', [['', '自訂'], ...PRESETS.map(q => [String(q.H), `H = ${q.H.toFixed(1)} m`])]],
       ['T', '(1) 牆身頂寬 T', 'm'], ['H', '(2) 牆體全高 H', 'm'], ['=h', '(3) 牆身高度 h = H − D1 − D2', 'm'],
-      ['=B', '(4) 基礎寬度 B = C + S + E', 'm'], ['C', '(5) 基礎趾長 C', 'm'], ['S', '(6) 牆身底寬 S', 'm'],
+      ['=B', '(4) 基礎寬度 B = C + S + E', 'm'], ['C', '(5) 基礎趾長 C', 'm'], ['=S', '(6) 牆身底寬 S = S1 + T + S2', 'm'],
       ['E', '(7) 基礎踵長 E', 'm'], ['D1', '(8) 基礎上高 D1', 'm'], ['D2', '(9) 基礎下高 D2', 'm'],
-      ['eta1', '(10) 牆前斜率 η1', ''], ['=eta', '(11) 牆背斜率 η2 = S2/h', ''],
+      ['=eta1', '(10) 牆前斜率 η1 = S1/h', ''], ['=eta', '(11) 牆背斜率 η2 = S2/h', ''],
       ['Kd', '(12) 止滑榫深度 Kd', 'm'], ['Ks', '(13) 止滑榫寬 Ks', 'm'], ['Kc', '(14) 止滑榫位置 Kc', 'm'],
       ['Df', '(15) 趾端覆土 Df', 'm'], ['=Y', '(16) 牆前回填 Y = Df + D1 + D2', 'm'], ['n', '(17) 背填坡度 1V : nH', 'n'],
-      ['=S1f', '(18) 牆身前底寬 S1 = η1·h', 'm'], ['=S2b', '(19) 牆身後底寬 S2 = S − T − S1', 'm']],
+      ['Sf', '(18) 牆身前底寬 S1', 'm'], ['Sb', '(19) 牆身後底寬 S2', 'm']],
       hint: '選擇牆高 H 即帶入建議尺寸，之後仍可自行修改任一尺寸（修改後顯示「自訂」）。實際條件不同時請自行檢核調整。' },
     { t: '2. 土壤參數', f: [
       ['gB', '回填土 γ2', 'tf/m³'], ['phiB', '回填土 ϕ2', '度'], ['cB', '回填土 c2', 'tf/m²'],
@@ -321,8 +324,6 @@
     return `<h4>${r.title}</h4>
       ${r.z !== null ? eq('斷面位置 z（自牆頂）', n(r.z), 'm') : ''}
       ${eq('斷面厚度 t ／ 有效深度 d', n(r.t, 1) + ' / ' + n(r.d), 'cm')}
-      ${eq('常時 V ／ M', n(r.Vn) + ' / ' + n(r.Mn), 'tf, tf·m')}
-      ${eq('地震時 V ／ M', n(r.Ve) + ' / ' + n(r.Me), 'tf, tf·m')}
       ${eq(`常時 Vu：${o.cf.combN} ／ 地震時 Vu：${o.cf.combE}`, n(r.Vun) + ' / ' + n(r.Vue), 'tf/m')}
       ${eq('Vu = max(常時, 地震時)', n(r.Vu), 'tf/m', true)}
       ${eq(`φVc = ${n(o.cf.pv)}×0.53√fc'·b·d`, n(r.pVc), r.okV ? 'φVc≥Vu OK!' : 'φVc<Vu NG!')}
@@ -423,12 +424,12 @@
     <h3>2.1 擋土牆設計尺寸</h3>
     <div class="dimrow"><div class="dimtab">    <div class="scroll"><table class="t"><tbody>
       ${[['(1) 牆身頂寬 T', p.T], ['(2) 牆體全高 H', p.H], ['(3) 牆身高度 h = H − D1 − D2', g.h], ['(4) 基礎寬度 B = C + S + E', g.B], ['(5) 基礎趾長 C', p.C],
-        ['(6) 牆身底寬 S', p.S], ['(7) 基礎踵長 E', p.E], ['(8) 基礎上高 D1', p.D1], ['(9) 基礎下高 D2', p.D2], ['(10) 牆前斜率 η1', g.eta1], ['(11) 牆背斜率 η2 = S2/h', g.eta],
+        ['(6) 牆身底寬 S = S1 + T + S2', p.S], ['(7) 基礎踵長 E', p.E], ['(8) 基礎上高 D1', p.D1], ['(9) 基礎下高 D2', p.D2], ['(10) 牆前斜率 η1 = S1/h', g.eta1], ['(11) 牆背斜率 η2 = S2/h', g.eta],
         ['(12) 止滑榫深度 Kd', p.Kd], ['(13) 止滑榫寬 Ks', p.Ks], ['(14) 止滑榫位置 Kc', p.Kc], ['(15) 趾端覆土 Df', p.Df], ['(16) 牆前回填 Y = Df + D1 + D2', g.Y]]
         .map(([a, b]) => `<tr><td>${a}${a.includes('η') ? '' : ' (m)'}</td><td>${n(b, a.includes('η') ? 3 : 2)}</td></tr>`).join('')}
       <tr><td>(17) 背填坡度</td><td>1V : ${p.n}H</td></tr>
-      ${[['(18) 牆身前底寬 S1 = η1·h', g.S1f], ['(19) 牆身後底寬 S2 = S − T − S1', g.S2b]].map(([a, b]) => `<tr><td>${a} (m)</td><td>${n(b)}</td></tr>`).join('')}</tbody></table></div>${g.okS2 ? '' : '<p class="note">※ 牆身後底寬 S2 < 0：牆前斜率 η1 過大（S1 = η1·h 大於 S − T），請修正。</p>'}</div>
-    <div class="dimimg"><div class="dimmask" role="img" aria-label="擋土牆設計尺寸示意圖"></div><img class="dimprint" src="wall-dims-v2.png" alt=""></div></div>
+      ${[['(18) 牆身前底寬 S1', g.S1f], ['(19) 牆身後底寬 S2', g.S2b]].map(([a, b]) => `<tr><td>${a} (m)</td><td>${n(b)}</td></tr>`).join('')}</tbody></table></div></div>
+    <div class="dimimg"><div class="dimmask" role="img" aria-label="擋土牆設計尺寸示意圖"></div><img class="dimprint" src="wall-dims-v3.png" alt=""></div></div>
     <h3>2.2 擋土牆配筋設計</h3>${barTable()}
     <h3>2.3 常時，穩定分析結果</h3>${sumTable(N, 6)}
     <h3>2.4 地震時，穩定分析結果</h3>${sumTable(Q, 3)}
@@ -492,9 +493,10 @@
   }
 
   function run() {
+    RW.syncDims(P);
     try { o = RW.compute(P); } catch (e) { console.error(e); return; }
-    for (const [k, v] of [['h', o.g.h], ['B', o.g.B], ['eta', o.g.eta], ['S1f', o.g.S1f], ['S2b', o.g.S2b], ['Y', o.g.Y], ['hw1', o.hw1], ['khS', o.khS], ['g1', o.g.g1], ['kvS', o.kvS], ['dN', o.n.delta], ['dE', o.e.delta], ['dpN', o.dpN], ['dpE', o.dpE]]) {
-      const el = document.getElementById('in_c_' + k); if (el) el.textContent = n(v, ['eta', 'khS', 'kvS'].includes(k) ? 3 : 2);
+    for (const [k, v] of [['h', o.g.h], ['B', o.g.B], ['eta', o.g.eta], ['eta1', o.g.eta1], ['S', o.g.S], ['Y', o.g.Y], ['hw1', o.hw1], ['khS', o.khS], ['g1', o.g.g1], ['kvS', o.kvS], ['dN', o.n.delta], ['dE', o.e.delta], ['dpN', o.dpN], ['dpE', o.dpE]]) {
+      const el = document.getElementById('in_c_' + k); if (el) el.textContent = n(v, ['eta', 'eta1', 'khS', 'kvS'].includes(k) ? 3 : 2);
     }
     const cb = document.getElementById('combo');
     if (cb) cb.innerHTML = `<table class="kv"><thead><tr><th></th><th>穩定分析</th><th>配筋設計</th></tr></thead><tbody>

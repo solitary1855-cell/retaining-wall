@@ -51,7 +51,7 @@
     fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, pwRed: 1, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
     cover: 7.5, dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni', heelSino: true, rcVer: 1, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
-    preset: '', eta1: 0, T: 0.30, H: 2.00, C: 0.00, S: 0.40, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
+    preset: '', T: 0.30, H: 2.00, C: 0.00, Sf: 0, Sb: 0.10, S: 0.40, eta1: 0, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
     bars: {
       S1: { L: 1.6, D: 16, s: 30 }, S2: { L: 0, D: 16, s: 30 }, S3: { L: 0, D: 16, s: 15 },
       S4: { D: 16, s: 20 }, S5: { D: 16, s: 30 }, S8: { D: 19, s: 30 }, T1: { D: 19, s: 30 }, T2: { D: 19, s: 30 }
@@ -116,8 +116,16 @@
     rotTop: { name: '對牆頂旋轉', s: null, d: null, t: 0.55 } // PAE 於 0.55H
   };
 
+  // 牆身前底寬 S1（Sf）、後底寬 S2（Sb）為輸入；牆身底寬 S = S1 + T + S2、牆前斜率 η1 = S1/h 自動計算
+  function syncDims(p) {
+    if (p.Sf === undefined || p.Sf === null || !isFinite(p.Sf)) { const h0 = p.H - p.D1 - p.D2; p.Sf = (+p.eta1 || 0) * h0; p.Sb = p.S - p.T - p.Sf; }
+    p.Sf = +p.Sf || 0; p.Sb = +p.Sb || 0;
+    p.S = p.Sf + p.T + p.Sb; p.eta1 = p.Sf / (p.H - p.D1 - p.D2);
+    return p;
+  }
   function compute(inp) {
     const p = Object.assign({}, inp);
+    syncDims(p);
     // kv 輸入以「向下為正」；內部計算沿用規範式 (1 − kv) 之慣例（向上為正），故取 kvU = −kv
     const kvU = -(+p.kv || 0);
     const pwRed = p.pwRed === undefined || p.pwRed === null || !isFinite(p.pwRed) ? 1 : +p.pwRed;   // 牆背動水壓折減係數（解說4 可取 0.7）
@@ -130,7 +138,7 @@
     const g = o.g = {};
     g.h = p.H - p.D1 - p.D2; g.B = p.C + p.S + p.E;
     // 牆前斜率 η1、牆身前底寬 S1 = η1·h、牆身後底寬 S2 = S − T − S1、牆背斜率 η2 = S2/h
-    g.eta1 = +p.eta1 || 0; g.S1f = g.eta1 * g.h; g.S2b = p.S - p.T - g.S1f; g.eta = g.S2b / g.h; g.okS2 = g.S2b >= -1e-9; g.Y = p.Df + p.D1 + p.D2;   // 牆前回填高度（自基底），Df 為牆身前緣處趾版頂面以上覆土
+    g.S = p.S; g.eta1 = p.eta1; g.S1f = p.Sf; g.S2b = p.Sb; g.eta = g.S2b / g.h; g.okS2 = g.S2b >= -1e-9; g.Y = p.Df + p.D1 + p.D2;   // 牆前回填高度（自基底），Df 為牆身前緣處趾版頂面以上覆土
     g.Ws = g.B - p.C - g.S1f - p.T;   // 牆頂背緣至踵端（超載作用寬度）
     const B = g.B, h = g.h;
     o.hw1 = p.hw1r * p.H;
@@ -452,5 +460,5 @@
     X.FSs = X.Hu / X.SH; X.okS = X.FSs >= X.fss;
   }
 
-  root.RW = { compute, DEFAULTS, CODES, BARS, NTAB, MVM, moKae, moKpe, ckKp, ckKpChart };
+  root.RW = { compute, syncDims, DEFAULTS, CODES, BARS, NTAB, MVM, moKae, moKpe, ckKp, ckKpChart };
 })(typeof window !== 'undefined' ? window : globalThis);
