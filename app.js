@@ -366,6 +366,29 @@
       ${eq('As = ρ·b·d', n(r.Asr), 'cm²/m', true)}
       ${eq(`As'（${r.desc}）`, n(r.Asp), r.okM ? "As'≥As OK!" : "As'<As NG!", true)}`;
   }
+  // 2.4 擋土牆配筋設計總表（鋼筋編號／長度／號數／間距／深度／配置／需求 As／設計 As／設計結果／備註）
+  function rebarTable() {
+    const B = P.bars, rc = o.rc, okc = (b, t) => `<span class="${b ? '' : 'ngt'}">${t}　${b ? 'OK!' : 'NG!'}</span>`;
+    const gov = list => list.reduce((a, r) => (r.Asr / Math.max(r.Asp, 1e-9) > a.Asr / Math.max(a.Asp, 1e-9) ? r : a), list[0]);
+    const row = (k, lab, hasL, H, cfg, Asr, Asp, okM, okV) => `<tr><td>${lab}</td><td class="in">${hasL && B[k].L ? n(B[k].L) : ''}</td><td class="in">${B[k].s > 0 ? B[k].D : ''}</td><td class="in">${B[k].s > 0 ? B[k].s : ''}</td>
+      <td>${H === null ? '' : n(H)}</td><td>${cfg}</td><td>${Asr === null ? '' : n(Asr)}</td><td>${Asp === null ? '' : n(Asp)}</td>
+      <td class="res">${okM === null ? '' : okc(okM, '≧As')}</td><td class="res">${okV === null ? '' : okc(okV, 'ψVc ≧ Vu')}</td></tr>`;
+    const st = [rc[2], rc[1], rc[0]], hS4 = gov(rc.filter(r => r.desc === 'S4')), hS5 = gov(rc.filter(r => r.desc === 'S5'));
+    const mn = k => o.min.find(m => m.k === k);
+    const vS4 = rc.filter(r => r.desc === 'S4').every(r => r.okV), vS5 = rc.filter(r => r.desc === 'S5').every(r => r.okV);
+    return `<div class="scroll"><table class="t rbt"><thead><tr><th rowspan="2">鋼筋編號</th><th>長度</th><th>號數</th><th>間距</th><th>深度</th><th>鋼筋</th><th>需求</th><th>設計</th><th rowspan="2">設計結果</th><th rowspan="2">備註</th></tr>
+      <tr><th>L (m)</th><th>db (mm)</th><th>S (cm)</th><th>H (m)</th><th>配置</th><th>As (cm²)</th><th>As,des (cm²)</th></tr></thead><tbody>
+      ${row('S1', 'S1', true, st[0].z, 'S1', st[0].Asr, st[0].Asp, st[0].okM, st[0].okV)}
+      ${row('S2', 'S2', true, st[1].z, 'S1+S2', st[1].Asr, st[1].Asp, st[1].okM, st[1].okV)}
+      ${row('S3', 'S3', true, st[2].z, 'S1+S2+S3', st[2].Asr, st[2].Asp, st[2].okM, st[2].okV)}
+      ${row('S4', 'S4、S6', false, null, 'S4、S6', hS4.Asr, hS4.Asp, rc.filter(r => r.desc === 'S4').every(r => r.okM), vS4)}
+      ${row('S5', 'S5、S7', false, null, 'S5、S7', hS5.Asr, hS5.Asp, rc.filter(r => r.desc === 'S5').every(r => r.okM), vS5)}
+      ${row('S8', 'S8', false, null, 'S8', mn('S8').Asr, mn('S8').Asp, mn('S8').ok, null)}
+      ${row('T1', 'T1', false, null, '2×T1', mn('T1').Asr, mn('T1').Asp, mn('T1').ok, null)}
+      ${row('T2', 'T2', false, null, '2×T2', mn('T2').Asr, mn('T2').Asp, mn('T2').ok, null)}
+    </tbody></table></div>
+    <p class="note">深度 H 為牆身檢核斷面距牆頂深度；S4、S5 需求量取踵版、趾版各檢核斷面中最不利者。</p>`;
+  }
   function barTable() {
     const rows = [['S1', '牆身主筋'], ['S2', '牆身補強'], ['S3', '牆身補強'], ['S4', '基礎版上層 S4、S6'], ['S5', '基礎版下層 S5、S7'], ['S8', '暴露面垂直筋'], ['T1', '牆身水平筋'], ['T2', '基礎溫度筋']];
     return `<div class="scroll"><table class="t"><thead><tr><th>編號</th><th>說明</th><th>長度 (m)</th><th>號數</th><th>間距 (cm)</th><th>As (cm²/m)</th></tr></thead><tbody>${rows.map(([k, d]) => `<tr><td>${k}</td><td style="text-align:left">${d}</td><td>${P.bars[k].L !== undefined ? n(P.bars[k].L) : '–'}</td><td>D${P.bars[k].D}</td><td>${P.bars[k].s}</td><td>${n(o.bar[k].As)}</td></tr>`).join('')}</tbody></table></div>`;
@@ -461,9 +484,9 @@
       <tr><td>(17) 背填坡度</td><td>1V : ${p.n}H</td></tr>
       ${[['(18) 牆身前底寬 S1', g.S1f], ['(19) 牆身後底寬 S2', g.S2b]].map(([a, b]) => `<tr><td>${a} (m)</td><td>${n(b)}</td></tr>`).join('')}</tbody></table></div></div>
     <div class="dimimg"><div class="dimmask" role="img" aria-label="擋土牆設計尺寸示意圖"></div><img class="dimprint" src="wall-dims-v3.png" alt=""></div></div>
-    <h3>2.2 擋土牆配筋設計</h3>${barTable()}
-    <h3>2.3 穩定分析結果（常時）</h3>${stabTable(N, 6)}
-    <h3>2.4 穩定分析結果（地震時）</h3>${stabTable(Q, 3)}
+    <h3>2.2 穩定分析結果（常時）</h3>${stabTable(N, 6)}
+    <h3>2.3 穩定分析結果（地震時）</h3>${stabTable(Q, 3)}
+    <h3>2.4 擋土牆配筋設計</h3>${rebarTable()}
 
     <h2>3. 穩定分析（常時）</h2>
     <p class="note">穩定分析時，將擋土牆本身及趾（踵）版上方之填土視為一整體。</p>
