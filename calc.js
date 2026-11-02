@@ -466,7 +466,7 @@
     // 設計地震（475年）地表水平加速度：SaD(T=0) = 0.4 SDS（表2-5、表C2-1）
     st.pgaH = 0.4 * st.SDS;
     // 垂直向：依所選規範
-    if (p.code === 'rail') { st.vr = st.near ? 2 / 3 : 0; st.vrNote = st.near ? '鐵路橋梁耐震設計規範第2.9節：活動斷層近域 αv = 2/3' : '鐵路橋梁耐震設計規範第2.9節：非活動斷層近域，不需考慮垂直地震力'; }
+    if (p.code === 'rail') { st.vr = st.near ? 2 / 3 : 1 / 2; st.vrNote = st.near ? '鐵路橋梁耐震設計規範第2.9節：活動斷層近域 αv = 2/3' : '鐵路橋梁：一般工址取 1/2'; }
     else if (p.code === 'c112') { st.vr = st.near ? 2 / 3 : 1 / 2; st.vrNote = '建築物耐震設計規範第2.18節：' + (st.near ? '近斷層工址 SaD,V = 2/3 SaD' : '一般區域與臺北盆地工址 SaD,V = 1/2 SaD'); }
     else { st.vr = st.near ? 2 / 3 : 1 / 2; st.vrNote = '公路橋梁：暫依建築物耐震設計規範第2.18節，' + (st.near ? '近斷層 2/3' : '一般 1/2') + '（請依公路橋梁耐震設計規範確認）'; }
     st.pgaV = st.vr * st.pgaH;
