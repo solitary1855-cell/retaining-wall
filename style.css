@@ -375,3 +375,20 @@ details.grp > summary::-webkit-details-marker { display: none; }
   .report table.qty td:nth-child(2) { min-width: 30mm; }
   .report table.qty { width: 100%; }
 }
+
+/* 工址選擇 */
+#siteBox { grid-column: 1 / -1; }
+.sitebox { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 4px 0 10px; display: grid; gap: 6px; font-size: 14px; }
+.sitebox .srow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.sitebox .srow.ind { padding-left: 1.6em; }
+.sitebox .rad { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-weight: 500; }
+.sitebox select { font: inherit; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); max-width: 100%; }
+.sitebox select.stown { max-width: 220px; }
+.sitebox .sref { font-size: 12px; color: var(--muted); margin-left: auto; }
+.sitebox .sfault { color: var(--ng); font-weight: 500; }
+.sitebox .sss { font-family: var(--mono); font-size: 13px; }
+.sitebox table.sft { border-collapse: collapse; margin-left: 1.6em; font-size: 13px; }
+.sitebox table.sft th, .sitebox table.sft td { border: 1px solid var(--line); padding: 3px 8px; }
+.sitebox table.sft input { width: 90px; font: inherit; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; text-align: right; background: var(--input, #fffbe6); color: var(--ink); }
+.sitebox .siteout { background: var(--accent-soft); border-radius: 6px; padding: 6px 10px; font-size: 13px; line-height: 1.6; }
+.f input.ro { background: transparent !important; border-style: dashed; color: var(--muted); }

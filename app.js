@@ -111,7 +111,7 @@
       ['code', '配筋規範', '', 'select', [['hw', '公路橋梁設計規範'], ['c112', '112年建築物基礎構造設計規範'], ['rail', '鐵路橋梁耐震設計規範']]]],
       hint: '係數依所選規範自動帶入。公路橋梁設計規範：第3.23節表3.3。112年建築物基礎構造設計規範：第2.11節規定基礎構材以極限強度法設計時依「建築構造編」辦理，載重組合依112年建築物混凝土結構設計規範表5.3.1及第5.3.6、5.3.7節。組合內容見下表。鐵路橋梁耐震設計規範：地震時組合依第4.1節。' },
     { t: '5. 材料設計強度及保護層', f: [['fc', "混凝土 fc'", 'kgf/cm²'], ['fy', '鋼筋 fy（D13 以上）', 'kgf/cm²'], ['fy10', '鋼筋 fy（D10）', 'kgf/cm²'], ['cover', "保護層 d'", 'cm']] },
-    { t: '6. 地震係數', f: [
+    { t: '6. 地震係數', site: true, f: [
       ['pgaH', '地表水平向尖峰加速度 PGAh', 'g'], ['pgaV', '地表垂直向尖峰加速度 PGAv', 'g'],
       ['khRes', '牆體側向位移完全受限', '', 'bool'], ['=khS', 'kh 建議值', ''], ['=kvS', 'kv 建議值', ''],
       ['kh', '水平向地震係數 kh（採用）', ''], ['kv', '垂直向地震係數 kv（採用，向下為正）', ''], ['pwRed', '牆背動水壓折減係數|基礎規範第7.3.6節解說 4', ''], ['kvPhi0', '計算 φ 時取 kv = 0', '', 'bool'],
@@ -151,6 +151,7 @@
       const box = document.createElement('div'); box.className = 'fields';
       if (g.hint) box.insertAdjacentHTML('beforeend', `<p class="hint">${g.hint}</p>`);
       if (g.html && !g.htmlAfter) box.insertAdjacentHTML('beforeend', g.html);
+      if (g.site) box.insertAdjacentHTML('beforeend', '<div id="siteBox"></div>');
       if (g.info && !g.f) {
         box.insertAdjacentHTML('beforeend', `<div id="${g.info}"></div>`);
       } else if (g.bars) {
@@ -181,9 +182,61 @@
       }
       d.appendChild(box); form.appendChild(d);
     }
+    renderSite();
   }
   function fmtIn(v) { if (v === null || v === undefined || v === '') return ''; return Math.abs(v - 1 / 3) < 1e-9 ? '0.3333' : Math.abs(v - 2 / 3) < 1e-9 ? '0.6667' : v; }
 
+  // ---------- 工址（建築物耐震設計規範 113年版）----------
+  const CLS = [[1, '第一類地盤（堅實地盤）'], [2, '第二類地盤（普通地盤）'], [3, '第三類地盤（軟弱地盤）']];
+  function renderSite() {
+    const S = window.RWSEIS, box = document.getElementById('siteBox'); if (!box || !S) return;
+    const m = P.siteMode || 'gen', esc = t => String(t).replace(/"/g, '&quot;');
+    if (!S.tw[P.siteCounty]) P.siteCounty = '臺南市';
+    const towns = S.tw[P.siteCounty]; if (!towns.find(r => r[0] === P.siteTown)) P.siteTown = towns[0][0];
+    const row = towns.find(r => r[0] === P.siteTown), faults = row[5] || [];
+    const gen = m === 'gen', tpe = m === 'tpe';
+    box.innerHTML = `<div class="sitebox">
+      <div class="srow"><label class="rad"><input type="radio" name="siteMode" data-site="mode" value="tpe" ${tpe ? 'checked' : ''}> 臺北盆地</label>
+        <select data-site="zone" ${tpe ? '' : 'disabled'}>${Object.keys(S.tpe).map(z => `<option ${z === P.tpeZone ? 'selected' : ''}>${z}</option>`).join('')}</select><span class="sref">表2-6、圖2-1</span></div>
+      <div class="srow"><label class="rad"><input type="radio" name="siteMode" data-site="mode" value="gen" ${gen ? 'checked' : ''}> 一般工址及近斷層區域</label><span class="sref">表2-1</span></div>
+      <div class="srow ind">縣市 <select data-site="county" ${gen ? '' : 'disabled'}>${S.order.map(c => `<option ${c === P.siteCounty ? 'selected' : ''}>${c}</option>`).join('')}</select>
+        <select data-site="town" class="stown" ${gen ? '' : 'disabled'}>${towns.map(r => `<option value="${esc(r[0])}" ${r[0] === P.siteTown ? 'selected' : ''}>${r[0]}</option>`).join('')}</select></div>
+      ${gen && faults.length ? `<div class="srow ind sfault">${faults.join('、')}</div>` : ''}
+      <div class="srow ind sss" id="siteSS"></div>
+      <div class="srow">地盤分類 <select data-site="cls" ${tpe ? 'disabled' : ''}>${CLS.map(([v, t]) => `<option value="${v}" ${+P.siteClass === v ? 'selected' : ''}>${t}</option>`).join('')}</select><span class="sref">第2.5節</span></div>
+      ${gen && faults.length ? `<table class="sft"><thead><tr><th>斷層名稱</th><th>近斷層距離 R (km)</th></tr></thead><tbody>${faults.map(f => `<tr><td>${f}</td><td><input data-site="r" data-fault="${esc(f)}" inputmode="decimal" value="${P.faultR && P.faultR[f] != null ? P.faultR[f] : ''}" placeholder="≥ 14"></td></tr>`).join('')}</tbody></table><p class="hint">R 為工址至中央地質調查所公布斷層地表跡線之最短水平距離；空白視為 R ≥ 14 km（取表2-1值）。多條斷層各參數取最大值（第2.4節）。</p>` : ''}
+      <div class="srow"><label class="rad"><input type="radio" name="siteMode" data-site="mode" value="manual" ${m === 'manual' ? 'checked' : ''}> 手動輸入 PGAh、PGAv</label></div>
+      <div id="siteOut" class="siteout"></div></div>`;
+  }
+  function updateSite() {
+    const st = o && o.site, ss = document.getElementById('siteSS'), out = document.getElementById('siteOut');
+    const S = window.RWSEIS;
+    if (ss) {
+      if (P.siteMode === 'gen' && S) { const row = (S.tw[P.siteCounty] || []).find(r => r[0] === P.siteTown);
+        ss.innerHTML = row ? `SSᴰ = ${n(row[1])}　S1ᴰ = ${n(row[2])}　SSᴹ = ${n(row[3])}　S1ᴹ = ${n(row[4])}` : ''; }
+      else ss.innerHTML = '';
+    }
+    if (out) {
+      if (!st) out.innerHTML = '<span class="hint">PGAh、PGAv 請於下方自行輸入。</span>';
+      else out.innerHTML = (st.mode === 'gen'
+        ? (st.faults.some(f => f.r !== null) ? `近斷層調整：SSᴰ = ${n(st.adj.SSD)}、S1ᴰ = ${n(st.adj.S1D)}<br>` : '') + `Fa = ${n(st.Fa, 3)}，SDS = Fa·SSᴰ = ${n(st.SDS, 3)}<br>`
+        : `${st.zone}：SDS = ${n(st.SDS)}，T0D = ${n(st.T0)} 秒<br>`)
+        + `<b>PGAh = 0.4·SDS = ${n(st.pgaH, 3)} g</b><br><b>PGAv = ${st.vr === 0 ? '0' : st.vr > 0.6 ? '2/3' : '1/2'} × PGAh = ${n(st.pgaV, 3)} g</b><br><span class="hint">${st.vrNote}</span>`;
+    }
+    for (const k of ['pgaH', 'pgaV']) { const el = document.getElementById('in_' + k); if (!el) continue;
+      el.readOnly = !!st; el.classList.toggle('ro', !!st); if (document.activeElement !== el) el.value = st ? n(st[k], 3) : P[k]; }
+  }
+  form.addEventListener('input', e => {
+    const el = e.target, k = el.dataset.site; if (!k) return;
+    const S = window.RWSEIS;
+    if (k === 'mode') { if (el.value === 'manual' && o && o.site) { P.pgaH = +o.site.pgaH.toFixed(3); P.pgaV = +o.site.pgaV.toFixed(3); } P.siteMode = el.value; }
+    else if (k === 'zone') P.tpeZone = el.value;
+    else if (k === 'county') { P.siteCounty = el.value; P.siteTown = S.tw[el.value][0][0]; }
+    else if (k === 'town') P.siteTown = el.value;
+    else if (k === 'cls') P.siteClass = +el.value;
+    else if (k === 'r') { const v = el.value.trim(); P.faultR = { ...(P.faultR || {}), [el.dataset.fault]: v === '' || !isFinite(parseFloat(v)) ? null : parseFloat(v) }; }
+    if (k !== 'r') renderSite();
+  }, true);
   form.addEventListener('input', e => {
     const el = e.target;
     if (el.dataset.bar) {
@@ -511,7 +564,16 @@
     <h3>1.4 材料設計強度</h3>
     ${eq("混凝土強度 fc'", n(p.fc, 0), 'kgf/cm²')}${eq('鋼筋降伏強度 fy（D13 以上）', n(p.fy, 0), 'kgf/cm²')}${eq('鋼筋降伏強度 fy（D10）', n(p.fy10, 0), 'kgf/cm²')}
     <h3>1.5 地震係數</h3>
-    ${eq('地表水平向 ／ 垂直向尖峰加速度 PGAh ／ PGAv', n(p.pgaH, 3) + ' / ' + n(p.pgaV, 3), 'g')}
+    ${(() => { const st = o.site; if (!st) return '';
+      if (st.mode === 'tpe') return eq('工址：臺北盆地微分區（表2-6(c)）', st.zone, '') + eq('工址短週期設計水平譜加速度係數 SDS ／ 轉角週期 T0D', n(st.SDS, 2) + ' / ' + n(st.T0, 2), '—, 秒');
+      let t = eq('工址（表2-1）', `${st.county} ${st.town}`, '') + eq('地盤分類（第2.5節）', CLS.find(c => c[0] === st.cls)[1], '')
+        + eq('震區係數 SSᴰ ／ S1ᴰ ／ SSᴹ ／ S1ᴹ（表2-1）', `${n(st.base.SSD)} / ${n(st.base.S1D)} / ${n(st.base.SSM)} / ${n(st.base.S1M)}`, '');
+      for (const f of st.faults) t += eq(`近斷層：${f.name}，R = ${f.r === null ? '未輸入（視為 ≥ 14 km）' : n(f.r, 1) + ' km'}（表2-3-1～2-3-4）`, `${n(f.v.SSD)} / ${n(f.v.S1D)} / ${n(f.v.SSM)} / ${n(f.v.S1M)}`, '');
+      if (st.faults.length) t += eq('採用 SSᴰ ／ S1ᴰ ／ SSᴹ ／ S1ᴹ（各斷層取大值）', `${n(st.adj.SSD)} / ${n(st.adj.S1D)} / ${n(st.adj.SSM)} / ${n(st.adj.S1M)}`, '');
+      return t + eq('工址放大係數 Fa（表2-4(a)）', n(st.Fa, 3), '') + eq('SDS = Fa·SSᴰ（式2-4）', n(st.SDS, 3), '');
+    })()}
+    ${o.site ? eq('PGAh = 0.4·SDS（設計地震，回歸期 475 年）', n(o.site.pgaH, 3), 'g') + eq(`PGAv = ${o.site.vr === 0 ? '0' : o.site.vr > 0.6 ? '2/3' : '1/2'} × PGAh（${o.site.vrNote}）`, n(o.site.pgaV, 3), 'g') : ''}
+    ${o.site ? '' : eq('地表水平向 ／ 垂直向尖峰加速度 PGAh ／ PGAv', n(p.pgaH, 3) + ' / ' + n(p.pgaV, 3), 'g')}
     ${eq(`kh 建議值 = ${p.khRes ? '1.5' : '0.5'} × PGAh${p.khRes ? '（側向位移完全受限）' : ''} ／ kv 建議值 = 0.5 × PGAv`, n(o.khS, 3) + ' / ' + n(o.kvS, 3), '')}
     ${eq('採用 kh ／ kv（kv 向下為正）', n(p.kh, 3) + ' / ' + n(p.kv, 3), p.kh < o.khS - 1e-9 ? '※ kh 小於規範解說建議值' : '')}
     ${eq('牆體變位模式', o.mv.name, '')}
@@ -621,6 +683,7 @@
   function run() {
     RW.syncDims(P);
     try { o = RW.compute(P); } catch (e) { console.error(e); return; }
+    updateSite();
     for (const [k, v] of [['h', o.g.h], ['B', o.g.B], ['eta', o.g.eta], ['eta1', o.g.eta1], ['S', o.g.S], ['Y', o.g.Y], ['hw1', o.hw1], ['khS', o.khS], ['g1', o.g.g1], ['kvS', o.kvS], ['dN', o.n.delta], ['dE', o.e.delta], ['dpN', o.dpN], ['dpE', o.dpE]]) {
       const el = document.getElementById('in_c_' + k); if (el) el.textContent = n(v, ['eta', 'eta1', 'khS', 'kvS'].includes(k) ? 3 : 2);
     }

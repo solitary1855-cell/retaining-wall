@@ -51,7 +51,8 @@
     // 承載層採緊密礫石級配（R-008 附註10：承載力不足時挖除以礫石級配回填）
     gB: 1.9, phiB: 30, cB: 0, gF: 2.1, phiF: 38, cF: 0, gC: 2.4, gW: 1.0,
     qs: 1.14, hw1r: 0, hw2: null,
-    fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0, khRes: false, kvPhi0: true, pwRed: 1, mvm: 'rotBase',
+    fc: 210, fy: 4200, fy10: 2800, code: 'hw', kh: 0.165, kv: 0, pgaH: 0.33, pgaV: 0,
+    siteMode: 'gen', siteCounty: '臺南市', siteTown: '歸仁區', siteClass: 2, tpeZone: '臺北一區', faultR: {}, khRes: false, kvPhi0: true, pwRed: 1, mvm: 'rotBase',
     fss_n: 1.5, fss_e: 1.2, fso_n: 2.0, fso_e: 1.5, fsb_n: 3.0, fsb_e: 2.0,
     cover: 7.5, dStemN: 0.5, dStemE: 0, stemCos: false, stemInert: false, upMode: 'uni', heelSino: true, rcVer: 1, ldhM: 'new', wallL: null, stockL: 12, workPct: 0, lossPct: 0, deltaR: 2 / 3, deltaRE: 2 / 3, deltaRP: 2 / 3, deltaRPE: 2 / 3, kam: 'coulomb', kaOvr: null, kaeOvr: null, kaem: 'mo', kpm: 'rankine', kpem: 'mo', kpOvr: null, kpeOvr: null,
     preset: '', T: 0.30, H: 2.00, C: 0.00, Sf: 0, Sb: 0.10, S: 0.40, eta1: 0, E: 1.40, D1: 0.00, D2: 0.40, Kd: 0.30, Kc: 0.00, Df: 0.80, n: 0, Ks: 0.30,
@@ -211,6 +212,8 @@
     const Q = o.e = {};
     const mv = o.mv = MVM[p.mvm] || MVM.rotBase;
     // 第7.3.4節解說3：kh 取地表水平向尖峰加速度之半（側向位移完全受限取1.5倍）；kv 取垂直向之半
+    o.site = siteSeis(p);
+    if (o.site) { p.pgaH = o.site.pgaH; p.pgaV = o.site.pgaV; }
     o.khS = (p.khRes ? 1.5 : 0.5) * p.pgaH; o.kvS = 0.5 * p.pgaV;
     // 地震合成角 φ：勾選 kvPhi0 時依第7.3.4節解說3（遠距離地震可忽略垂直地震力）令 kv = 0，否則採輸入之 kv
     Q.kvPhi = p.kvPhi0 === false ? kvU : 0;
@@ -422,6 +425,51 @@
     o.allOK = checks.every(Boolean);
     o.qty = quantities(p, o, g);
     return o;
+  }
+
+  // ---------- 工址地震係數（建築物耐震設計規範 113年版 第2.3～2.7、2.18節） ----------
+  const lin = (xs, ys, x) => { if (x <= xs[0]) return ys[0]; for (let i = 1; i < xs.length; i++) if (x <= xs[i]) return ys[i - 1] + (ys[i] - ys[i - 1]) * (x - xs[i - 1]) / (xs[i] - xs[i - 1]); return ys[ys.length - 1]; };
+  function siteSeis(p) {
+    const S = root.RWSEIS; if (!S || p.siteMode === 'manual') return null;
+    const st = { mode: p.siteMode === 'tpe' ? 'tpe' : 'gen', code: p.code };
+    const cls = [1, 2, 3].includes(+p.siteClass) ? +p.siteClass : 2; st.cls = cls;
+    if (st.mode === 'tpe') {
+      const z = S.tpe[p.tpeZone] ? p.tpeZone : '臺北一區'; st.zone = z;
+      [st.SDS, st.SMS, st.T0] = S.tpe[z];
+      st.near = false;
+    } else {
+      const list = S.tw[p.siteCounty] || S.tw['臺南市'];
+      st.county = S.tw[p.siteCounty] ? p.siteCounty : '臺南市';
+      const row = list.find(r => r[0] === p.siteTown) || list[0];
+      st.town = row[0];
+      st.base = { SSD: row[1], S1D: row[2], SSM: row[3], S1M: row[4] };
+      st.faults = row[5].map(name => {
+        const g = S.grp[name], rIn = p.faultR && p.faultR[name];
+        const r = rIn === '' || rIn === null || rIn === undefined || !isFinite(rIn) ? null : Math.max(0, +rIn);
+        const v = {};
+        for (const k of ['SSD', 'S1D', 'SSM', 'S1M']) {
+          const ex = S.nf[k][g], nodes = S.r.map((_, i) => i < ex.length ? ex[i] : st.base[k]);
+          v[k] = r === null ? st.base[k] : Math.max(st.base[k], lin(S.r, nodes, r));
+        }
+        return { name, g, r, v };
+      });
+      // 多條斷層取各參數最大值（第2.4節解說）
+      st.adj = {};
+      for (const k of ['SSD', 'S1D', 'SSM', 'S1M']) st.adj[k] = Math.max(st.base[k], ...st.faults.map(f => f.v[k]));
+      st.near = st.faults.length > 0;
+      st.Fa = lin(S.Fa.ss, S.Fa.c[cls], st.adj.SSD); st.Fv = lin(S.Fv.s1, S.Fv.c[cls], st.adj.S1D);
+      st.SDS = st.Fa * st.adj.SSD; st.SD1 = st.Fv * st.adj.S1D;
+      st.FaM = lin(S.Fa.ss, S.Fa.c[cls], st.adj.SSM); st.FvM = lin(S.Fv.s1, S.Fv.c[cls], st.adj.S1M);
+      st.SMS = st.FaM * st.adj.SSM; st.SM1 = st.FvM * st.adj.S1M;
+    }
+    // 設計地震（475年）地表水平加速度：SaD(T=0) = 0.4 SDS（表2-5、表C2-1）
+    st.pgaH = 0.4 * st.SDS;
+    // 垂直向：依所選規範
+    if (p.code === 'rail') { st.vr = st.near ? 2 / 3 : 0; st.vrNote = st.near ? '鐵路橋梁耐震設計規範第2.9節：活動斷層近域 αv = 2/3' : '鐵路橋梁耐震設計規範第2.9節：非活動斷層近域，不需考慮垂直地震力'; }
+    else if (p.code === 'c112') { st.vr = st.near ? 2 / 3 : 1 / 2; st.vrNote = '建築物耐震設計規範第2.18節：' + (st.near ? '近斷層工址 SaD,V = 2/3 SaD' : '一般區域與臺北盆地工址 SaD,V = 1/2 SaD'); }
+    else { st.vr = st.near ? 2 / 3 : 1 / 2; st.vrNote = '公路橋梁：暫依建築物耐震設計規範第2.18節，' + (st.near ? '近斷層 2/3' : '一般 1/2') + '（請依公路橋梁耐震設計規範確認）'; }
+    st.pgaV = st.vr * st.pgaH;
+    return st;
   }
 
   // ---------- 鋼筋數量（112年混凝土結構設計規範 第25章） ----------
