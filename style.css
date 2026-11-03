@@ -400,3 +400,14 @@ details.grp > summary::-webkit-details-marker { display: none; }
 .report table.ctab td, .report table.ctab th { padding: 3px 7px; white-space: nowrap; }
 .report table.ctab td:first-child { white-space: normal; min-width: 9em; }
 @media print { .report details.calcdet { display: none !important; } }
+
+/* 彎矩圖、剪力圖 */
+.report .bdiawrap { margin: 8px 0 14px; max-width: 760px; }
+.report svg.bdia { width: 100%; height: auto; display: block; font-family: var(--sans); }
+.report svg.bdia .bt { font-size: 14px; font-weight: 600; fill: var(--ink); }
+.report svg.bdia .tk { font-size: 11.5px; fill: var(--muted); }
+.report svg.bdia .gl2 { stroke: var(--line); stroke-width: 1; }
+.report svg.bdia .zl { stroke: var(--muted); stroke-width: 1.2; }
+.report svg.bdia .stemz { fill: var(--concrete); opacity: .18; }
+.report svg.bdia .slab polygon { fill: var(--concrete); fill-opacity: .55; stroke: var(--ink); stroke-width: 1; }
+.report svg.bdia .slab polygon.stemcut { fill-opacity: .3; stroke-dasharray: 3 3; }

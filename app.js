@@ -413,8 +413,44 @@
       <tr class="sum"><td>Min.</td>${cs.map((c, i) => `<td>${n(c.st[mnM[i]].M)}</td>`).join('')}${cs.map((c, i) => `<td>${n(c.st[mnV[i]].V)}</td>`).join('')}</tr>
       <tr><td>Loc (m)</td>${mnM.map(j => `<td>${n(t.xs[j])}</td>`).join('')}${mnV.map(j => `<td>${n(t.xs[j])}</td>`).join('')}</tr>
       </tbody></table></div>
+      ${baseDiagram('M')}${baseDiagram('V')}
       <p class="note">表列為 ${t.xs.length} 個代表斷面；下方配筋採 40 等分逐斷面計算之極值，數值可能略大於表列。</p></details>`;
     return h;
+  }
+  // 彎矩圖、剪力圖（沿基礎版，下方附基礎版斷面示意，x 自趾端起算）
+  const CPAL = ['#2f6db5', '#d1782a', '#2e9d6a', '#b8475a', '#7b5cc4', '#8f8a24', '#3a9fb0'];
+  function baseDiagram(key) {
+    const t = o.baseTab, cs = t.combos, g = o.g, B = g.B, C = P.C, S = o.p.S, D1 = P.D1, D2 = P.D2;
+    const W = 760, L = 70, Rm = 150, T0 = 34, PH = 220, x0 = L, x1 = W - Rm;
+    let lo = 0, hi = 0; cs.forEach(c => c.dn.forEach(p => { lo = Math.min(lo, p[key]); hi = Math.max(hi, p[key]); }));
+    if (hi - lo < 1e-9) { hi = 1; lo = -1; }
+    const span = hi - lo, step0 = Math.pow(10, Math.floor(Math.log10(span / 5))), stp = [1, 2, 5, 10].map(k => k * step0).find(v => span / v <= 6);
+    lo = Math.floor(lo / stp) * stp; hi = Math.ceil(hi / stp) * stp;
+    const X = x => x0 + (x / B) * (x1 - x0), Y = v => T0 + (hi - v) / (hi - lo) * PH;
+    const sy = T0 + PH + 34, sc = (x1 - x0) / B, th = Math.max(14, Math.min(46, (D1 + D2) * sc));
+    let svg = `<svg viewBox="0 0 ${W} ${sy + th + 44}" class="draw bdia" role="img" aria-label="${key === 'M' ? '彎矩圖' : '剪力圖'}">`;
+    svg += `<text x="${x0}" y="20" class="bt">${key === 'M' ? 'Moment Diagram　設計彎矩 Mu (tf-m/m)' : 'Shear Diagram　設計剪力 Vu (tf/m)'}</text>`;
+    for (let v = lo; v <= hi + 1e-9; v += stp) { const y = Y(v); svg += `<line x1="${x0}" x2="${x1}" y1="${y}" y2="${y}" class="${Math.abs(v) < 1e-9 ? 'zl' : 'gl2'}"/><text x="${x0 - 8}" y="${y + 4}" text-anchor="end" class="tk">${(+v.toFixed(6)).toString()}</text>`; }
+    const xt = []; for (let k = 0; k <= Math.floor(B + 1e-9); k++) xt.push(k); if (B - xt[xt.length - 1] > 0.45) xt.push(+B.toFixed(2));
+    xt.forEach(x => { svg += `<line x1="${X(x)}" x2="${X(x)}" y1="${T0}" y2="${T0 + PH}" class="gl2"/><text x="${X(x)}" y="${T0 + PH + 16}" text-anchor="middle" class="tk">${x}</text>`; });
+    svg += `<text x="${(x0 + x1) / 2}" y="${T0 + PH + 30}" text-anchor="middle" class="tk">位置 x (m)</text>`;
+    // 牆身區段（C ～ C+S）以淡底標示
+    svg += `<rect x="${X(C)}" y="${T0}" width="${X(C + S) - X(C)}" height="${PH}" class="stemz"/><text x="${(X(C) + X(C + S)) / 2}" y="${T0 + 14}" text-anchor="middle" class="tk">牆身</text>`;
+    cs.forEach((c, i) => {
+      const col = CPAL[i % CPAL.length];
+      for (const z of ['toe', 'heel']) { const pts = c.dn.filter(p => p.z === z); if (pts.length < 2) continue;
+        svg += `<polyline fill="none" stroke="${col}" stroke-width="1.8" points="${pts.map(p => `${X(p.x).toFixed(1)},${Y(p[key]).toFixed(1)}`).join(' ')}"/>`; }
+      const ly = T0 + 10 + i * 18;
+      svg += `<line x1="${x1 + 14}" x2="${x1 + 34}" y1="${ly}" y2="${ly}" stroke="${col}" stroke-width="2"/><text x="${x1 + 40}" y="${ly + 4}" class="tk"><title>${c.tag}</title>Comb ${i + 1}</text>`;
+    });
+    // 基礎版斷面示意（與 x 軸對齊）
+    const yb = sy + th, ytop = sy + th - D2 * sc * (th / Math.max(1e-6, (D1 + D2) * sc));
+    const yD2 = yb - th * D2 / Math.max(1e-6, D1 + D2);
+    svg += `<g class="slab"><polygon points="${X(0)},${yb} ${X(B)},${yb} ${X(B)},${yD2} ${X(C + S)},${sy} ${X(C)},${sy} ${X(0)},${yD2}"/>`;
+    svg += `<polygon points="${X(C)},${sy} ${X(C + S)},${sy} ${X(C + S)},${sy - 18} ${X(C)},${sy - 18}" class="stemcut"/></g>`;
+    svg += `<text x="${(X(0) + X(C)) / 2}" y="${yb + 16}" text-anchor="middle" class="tk">${C > 0.05 ? '趾版' : ''}</text><text x="${(X(C + S) + X(B)) / 2}" y="${yb + 16}" text-anchor="middle" class="tk">踵版</text>`;
+    svg += `<text x="${X(B) + 8}" y="${(sy + yb) / 2 + 4}" class="tk">基礎版</text>`;
+    return `<div class="bdiawrap">${svg}</svg></div>`;
   }
   let baseOpen = false;
   try { baseOpen = localStorage.getItem('rw-baseopen') === '1'; } catch (e) {}

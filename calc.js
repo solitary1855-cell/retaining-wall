@@ -399,13 +399,18 @@
       const NI = 400;
       o.baseTab = { xs: xs.map(p => p.x), combos: all.map(({ f, X, tag }) => {
         const wToe = u => f.D * q2 - f.F * up(u), wHeel = u => f.LV * q0 + f.D * (q1 + q2) - f.F * up(u);
-        const st = xs.map(p => {
+        const calcAt = p => {
           let V = 0, M = 0;
           if (p.z === 'toe') { const L = p.x, dx = L / NI; for (let i = 0; i < NI && L > 0; i++) { const u = (i + .5) * dx, n = pres(u, X) - wToe(u); V += n * dx; M += n * dx * (L - u); } }
           else { const L = B - p.x, dx = L / NI; for (let i = 0; i < NI && L > 0; i++) { const u = p.x + (i + .5) * dx, n = pres(u, X) - wHeel(u); V += n * dx; M += n * dx * (u - p.x); } }
           return { V, M };
-        });
-        return { tag, SV: X.SV, SH: X.SH, Mr: X.Mr, Md: X.Md, e: X.e, qt: X.qt, qh: X.qh, a: X.a,
+        };
+        const st = xs.map(calcAt);
+        const dense = [];
+        if (C > 0.005) for (let i = 0; i <= 20; i++) dense.push({ x: C * i / 20, z: 'toe' });
+        for (let i = 0; i <= 40; i++) dense.push({ x: C + S + E * i / 40, z: 'heel' });
+        const dn = dense.map(p => ({ x: p.x, z: p.z, ...calcAt(p) }));
+        return { tag, dn, SV: X.SV, SH: X.SH, Mr: X.Mr, Md: X.Md, e: X.e, qt: X.qt, qh: X.qh, a: X.a,
           toe: { L: C, qslab: f.D * q2, up0: f.F * up(0), upC: f.F * up(C), w: f.D * q2, r1: pres(0, X), r2: pres(C, X) },
           heel: { L: E, qsur: f.LV * q0, qsoil: f.D * q1, qslab: f.D * q2, upB: f.F * up(B), upF: f.F * up(C + S), w: wHeel(C + S), wB: wHeel(B), r1: pres(B, X), r2: pres(C + S, X), aZero: Math.max(0, B - X.a) },
           st };
