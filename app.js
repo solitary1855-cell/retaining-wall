@@ -413,7 +413,7 @@
       <tr class="sum"><td>Min.</td>${cs.map((c, i) => `<td>${n(c.st[mnM[i]].M)}</td>`).join('')}${cs.map((c, i) => `<td>${n(c.st[mnV[i]].V)}</td>`).join('')}</tr>
       <tr><td>Loc (m)</td>${mnM.map(j => `<td>${n(t.xs[j])}</td>`).join('')}${mnV.map(j => `<td>${n(t.xs[j])}</td>`).join('')}</tr>
       </tbody></table></div>
-      ${baseDiagram('M')}${baseDiagram('V')}
+      <div class="bdiarow">${baseDiagram('M')}${baseDiagram('V')}</div>
       <p class="note">表列為 ${t.xs.length} 個代表斷面；下方配筋採 40 等分逐斷面計算之極值，數值可能略大於表列。</p></details>`;
     return h;
   }
