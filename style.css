@@ -392,3 +392,11 @@ details.grp > summary::-webkit-details-marker { display: none; }
 .sitebox table.sft input { width: 90px; font: inherit; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; text-align: right; background: var(--input, #fffbe6); color: var(--ink); }
 .sitebox .siteout { background: var(--accent-soft); border-radius: 6px; padding: 6px 10px; font-size: 13px; line-height: 1.6; }
 .f input.ro { background: transparent !important; border-style: dashed; color: var(--muted); }
+
+/* 基礎版計算過程表（可展開） */
+.report details.calcdet { border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; margin: 8px 0 12px; }
+.report details.calcdet > summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 14px; padding: 4px 0; }
+.report table.ctab { font-size: 12.5px; }
+.report table.ctab td, .report table.ctab th { padding: 3px 7px; white-space: nowrap; }
+.report table.ctab td:first-child { white-space: normal; min-width: 9em; }
+@media print { .report details.calcdet { display: none !important; } }

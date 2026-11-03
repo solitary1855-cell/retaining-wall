@@ -380,9 +380,9 @@
     const toe = (X, f = { D: 1, F: 1 }) => prof(C, s => pres(C - s, X) + f.F * up(C - s) - f.D * q2);
     // 因數化地盤反力：各分項載重乘係數後重算偏心與反力
     function factored(comp, f) {
-      let SV = 0, Mr = 0, Md = 0;
-      for (const k of comp) { const c = f[k.c]; if (k.V !== undefined) { SV += c * k.V; Mr += c * k.V * k.x; } if (k.H !== undefined) Md += c * k.H * k.y; }
-      const X = { SV, e: B / 2 - (Mr - Md) / SV };
+      let SV = 0, SH = 0, Mr = 0, Md = 0;
+      for (const k of comp) { const c = f[k.c]; if (k.V !== undefined) { SV += c * k.V; Mr += c * k.V * k.x; } if (k.H !== undefined) { SH += c * k.H; Md += c * k.H * k.y; } }
+      const X = { SV, SH, Mr, Md, e: B / 2 - (Mr - Md) / SV };
       X.a = Math.min(B, 3 * (B / 2 - Math.abs(X.e)));
       if (Math.abs(X.e) <= B / 6) { X.qt = SV / B * (1 + 6 * X.e / B); X.qh = SV / B * (1 - 6 * X.e / B); }
       else if (X.e > 0) { X.qt = 2 * SV / (3 * (B / 2 - X.e)); X.qh = 0; }
@@ -390,6 +390,27 @@
       return X;
     }
     o.nu = cf.cn.map(f => factored(N.comp, f)); o.eu = cf.ce.map(f => factored(Q.comp, f));
+    // 計算過程表（比照計算書 5.3）：各組合之載重、地盤反力及沿版長斷面 V、M（正值＝淨載重向上，即 M = ∫(地盤反力 − 版上載重)·力臂）
+    {
+      const xs = []; const nT = C > 0.005 ? 10 : 0, nH = 10;
+      for (let i = 0; i <= nT; i++) xs.push({ x: C * i / Math.max(nT, 1), z: 'toe' });
+      for (let i = 0; i <= nH; i++) xs.push({ x: C + S + E * i / nH, z: 'heel' });
+      const all = [...cf.cn.map((f, i) => ({ f, X: o.nu[i], tag: f.tag || o.cf.combN })), ...cf.ce.map((f, i) => ({ f, X: o.eu[i], tag: f.tag || o.cf.combE }))];
+      const NI = 400;
+      o.baseTab = { xs: xs.map(p => p.x), combos: all.map(({ f, X, tag }) => {
+        const wToe = u => f.D * q2 - f.F * up(u), wHeel = u => f.LV * q0 + f.D * (q1 + q2) - f.F * up(u);
+        const st = xs.map(p => {
+          let V = 0, M = 0;
+          if (p.z === 'toe') { const L = p.x, dx = L / NI; for (let i = 0; i < NI && L > 0; i++) { const u = (i + .5) * dx, n = pres(u, X) - wToe(u); V += n * dx; M += n * dx * (L - u); } }
+          else { const L = B - p.x, dx = L / NI; for (let i = 0; i < NI && L > 0; i++) { const u = p.x + (i + .5) * dx, n = pres(u, X) - wHeel(u); V += n * dx; M += n * dx * (u - p.x); } }
+          return { V, M };
+        });
+        return { tag, SV: X.SV, SH: X.SH, Mr: X.Mr, Md: X.Md, e: X.e, qt: X.qt, qh: X.qh, a: X.a,
+          toe: { L: C, qslab: f.D * q2, up0: f.F * up(0), upC: f.F * up(C), w: f.D * q2, r1: pres(0, X), r2: pres(C, X) },
+          heel: { L: E, qsur: f.LV * q0, qsoil: f.D * q1, qslab: f.D * q2, upB: f.F * up(B), upF: f.F * up(C + S), w: wHeel(C + S), wB: wHeel(B), r1: pres(B, X), r2: pres(C + S, X), aZero: Math.max(0, B - X.a) },
+          st };
+      }) };
+    }
     // 多組組合包絡：正彎矩、反向彎矩、剪力分別取最大
     const envB = list => {
       const pick = key => list.reduce((b, r, i) => r[key] > list[b][key] ? i : b, 0);

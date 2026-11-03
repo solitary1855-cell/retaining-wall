@@ -374,6 +374,51 @@
     </tbody></table></div>`;
     return t;
   }
+  // 5.3 基礎版計算過程表（比照計算書；僅畫面，可展開／隱藏，列印不輸出）
+  function baseTables() {
+    const t = o.baseTab; if (!t) return '';
+    const cs = t.combos, nC = cs.length, hd = cs.map((c, i) => `<th title="${c.tag}">Comb ${i + 1}</th>`).join('');
+    const row = (lab, fn, d = 2) => `<tr><td>${lab}</td>${cs.map(c => `<td>${n(fn(c), d)}</td>`).join('')}</tr>`;
+    const leg = cs.map((c, i) => `Comb ${i + 1}：${c.tag}`).join('　');
+    const g = o.g, C = P.C, S = o.p.S, B = g.B, upAny = cs.some(c => c.heel.upB > 0 || c.toe.up0 > 0), partial = cs.some(c => c.heel.aZero > 1e-6);
+    let h = `<details class="calcdet scr-only"${baseOpen ? ' open' : ''}><summary>基礎版設計載重計算表（比照計算書，點選展開／隱藏）</summary>
+      <p class="note">${leg}</p>
+      <h4>(1) 設計載重</h4>
+      <div class="scroll"><table class="t ctab"><thead><tr><th>載重組合</th>${hd}</tr></thead><tbody>
+      ${row('垂直作用力 V (tf)', c => c.SV)}${row('水平作用力 H (tf)', c => c.SH)}${row('抵抗彎矩 Mr (tf-m)', c => c.Mr)}${row('驅動彎矩 Md (tf-m)', c => c.Md)}
+      ${row('偏心距 e (m)', c => c.e)}${row('趾端反力 qt (tf/m²)', c => c.qt)}${row('踵端反力 qh (tf/m²)', c => c.qh)}
+      </tbody></table></div>
+      <p class="note">基礎平均厚度 tav = ${n(o.base.tav * 100, 1)} cm，有效深度 d = ${n(o.base.tav * 100 - P.cover, 1)} cm，基礎全寬 B = ${n(B)} m，趾長 C = ${n(C)} m，踵長 E = ${n(P.E)} m。</p>
+      <h4>基礎趾端設計載重</h4>
+      <div class="scroll"><table class="t ctab"><thead><tr><th>載重組合</th>${hd}</tr></thead><tbody>
+      ${row('趾端長度 Ltoe (m)', c => c.toe.L)}${row('平均底板重 qslab (tf/m²)', c => c.toe.qslab)}${upAny ? row('版底揚壓力 F·γw·h (tf/m²)', c => c.toe.up0) : ''}
+      ${row('地盤反力 w1 (x = 0.00)', c => c.toe.r1)}${row(`地盤反力 w2 (x = ${n(C)})`, c => c.toe.r2)}
+      </tbody></table></div>
+      <h4>基礎踵端設計載重</h4>
+      <div class="scroll"><table class="t ctab"><thead><tr><th>載重組合</th>${hd}</tr></thead><tbody>
+      ${row('踵端長度 Lheel (m)', c => c.heel.L)}${partial ? row('反力為零之長度 a (m)', c => c.heel.aZero) : ''}
+      ${row('超載 qsur (tf/m²)', c => c.heel.qsur)}${row('平均覆土重 qsoil (tf/m²)', c => c.heel.qsoil)}${row('平均底板重 qslab (tf/m²)', c => c.heel.qslab)}
+      ${upAny ? row('版底揚壓力 F·γw·h，牆背面 (tf/m²)', c => -c.heel.upF) : ''}
+      ${row('上方載重 w，牆背面 (tf/m²)', c => c.heel.w)}
+      ${row(`地盤反力 w1 (x = ${n(B)})`, c => c.heel.r1)}${row(`地盤反力 w2 (x = ${n(C + S)})`, c => c.heel.r2)}
+      </tbody></table></div>
+      <h4>(2) 設計載重計算</h4>
+      <p class="note">x 自趾端起算；正值表示淨載重向上：M = ∫(地盤反力 − 版上載重)·力臂。趾版自趾端、踵版自踵端（自由端）積分至斷面。</p>
+      <div class="scroll"><table class="t ctab"><thead><tr><th rowspan="2">位置 x (m)</th><th colspan="${nC}">設計彎矩 Mu (tf-m/m)</th><th colspan="${nC}">設計剪力 Vu (tf/m)</th></tr><tr>${hd}${hd}</tr></thead><tbody>`;
+    t.xs.forEach((x, j) => { h += `<tr><td>${n(x)}</td>${cs.map(c => `<td>${n(c.st[j].M)}</td>`).join('')}${cs.map(c => `<td>${n(c.st[j].V)}</td>`).join('')}</tr>`; });
+    const ext = (key, f) => cs.map(c => { let bi = 0; c.st.forEach((s2, j) => { if (f(s2[key], c.st[bi][key])) bi = j; }); return bi; });
+    const mxM = ext('M', (a, b) => a > b), mnM = ext('M', (a, b) => a < b), mxV = ext('V', (a, b) => a > b), mnV = ext('V', (a, b) => a < b);
+    h += `<tr class="sum"><td>Max.</td>${cs.map((c, i) => `<td>${n(c.st[mxM[i]].M)}</td>`).join('')}${cs.map((c, i) => `<td>${n(c.st[mxV[i]].V)}</td>`).join('')}</tr>
+      <tr><td>Loc (m)</td>${mxM.map(j => `<td>${n(t.xs[j])}</td>`).join('')}${mxV.map(j => `<td>${n(t.xs[j])}</td>`).join('')}</tr>
+      <tr class="sum"><td>Min.</td>${cs.map((c, i) => `<td>${n(c.st[mnM[i]].M)}</td>`).join('')}${cs.map((c, i) => `<td>${n(c.st[mnV[i]].V)}</td>`).join('')}</tr>
+      <tr><td>Loc (m)</td>${mnM.map(j => `<td>${n(t.xs[j])}</td>`).join('')}${mnV.map(j => `<td>${n(t.xs[j])}</td>`).join('')}</tr>
+      </tbody></table></div>
+      <p class="note">表列為 ${t.xs.length} 個代表斷面；下方配筋採 40 等分逐斷面計算之極值，數值可能略大於表列。</p></details>`;
+    return h;
+  }
+  let baseOpen = false;
+  try { baseOpen = localStorage.getItem('rw-baseopen') === '1'; } catch (e) {}
+  document.getElementById('report').addEventListener('toggle', e => { if (e.target.classList && e.target.classList.contains('calcdet')) { baseOpen = e.target.open; try { localStorage.setItem('rw-baseopen', baseOpen ? '1' : '0'); } catch (err) {} } }, true);
   // 計算書分頁（畫面）：1～4、5、6
   let curRT = '1';
   try { curRT = localStorage.getItem('rw-rt6') || '1'; } catch (e) {}
@@ -670,6 +715,7 @@
     ${eq('q0（超載）／ q1（填土）／ q2（版重）', `${n(o.base.q0)} / ${n(o.base.q1)} / ${n(o.base.q2)}`, 'tf/m²')}
     ${o.base.upH > 0 || o.base.upT > 0 ? eq(`版底揚壓力（${o.base.upUni ? '均佈：踵版 γw·Hw1、趾版 γw·Hw2' : '梯形，同 Pb'}）：踵版 ／ 趾版`, `${n(o.base.upH)} / ${n(o.base.upT)}`, 'tf/m²') : ''}
     <p class="note">踵版：w = LV·q0 + D·(q1 + q2) − F·γw·h − q（向下為正，正彎矩上層受拉）；趾版：w = q + F·γw·h − D·q2（向上為正，正彎矩下層受拉）。q 為因數化地盤反力。</p>
+    ${baseTables()}
     ${o.rc.slice(3).map(rcReport).join('')}
     ${[o.min[2]].map(m => `<h4>(3) ${m.title}</h4>${eq('ρt', n(m.rho, 4), '')}${eq('As = ' + m.basis, n(m.Asr), 'cm²/m', true)}${eq("As'", n(m.Asp), m.ok ? "As'≥As OK!" : "As'<As NG!", true)}`).join('')}`;
     h += `</div><div class="rt" data-rt="6">${qtyReport()}</div>`;
