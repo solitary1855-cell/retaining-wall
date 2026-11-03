@@ -381,7 +381,7 @@
     const row = (lab, fn, d = 2) => `<tr><td>${lab}</td>${cs.map(c => `<td>${n(fn(c), d)}</td>`).join('')}</tr>`;
     const leg = cs.map((c, i) => `Comb ${i + 1}：${c.tag}`).join('　');
     const g = o.g, C = P.C, S = o.p.S, B = g.B, upAny = cs.some(c => c.heel.upB > 0 || c.toe.up0 > 0), partial = cs.some(c => c.heel.aZero > 1e-6);
-    let h = `<details class="calcdet scr-only"${baseOpen ? ' open' : ''}><summary>基礎版設計載重計算表（比照計算書，點選展開／隱藏）</summary>
+    let h = `<details class="calcdet scr-only"${baseOpen ? ' open' : ''}><summary>基礎版設計載重計算</summary>
       <p class="note">${leg}</p>
       <h4>(1) 設計載重</h4>
       <div class="scroll"><table class="t ctab"><thead><tr><th>載重組合</th>${hd}</tr></thead><tbody>
