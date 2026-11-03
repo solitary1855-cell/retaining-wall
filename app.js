@@ -422,7 +422,8 @@
   function baseDiagram(key) {
     const t = o.baseTab, cs = t.combos, g = o.g, B = g.B, C = P.C, S = o.p.S, D1 = P.D1, D2 = P.D2;
     const W = 760, L = 70, Rm = 150, T0 = 34, PH = 220, x0 = L, x1 = W - Rm;
-    let lo = 0, hi = 0; cs.forEach(c => c.dn.forEach(p => { lo = Math.min(lo, p[key]); hi = Math.max(hi, p[key]); }));
+    // 兩張圖共用相同之 Y 軸範圍與刻度（彎矩、剪力取聯集），X 軸同為 0～B
+    let lo = 0, hi = 0; cs.forEach(c => c.dn.forEach(p => { for (const k of ['M', 'V']) { lo = Math.min(lo, p[k]); hi = Math.max(hi, p[k]); } }));
     if (hi - lo < 1e-9) { hi = 1; lo = -1; }
     const span = hi - lo, step0 = Math.pow(10, Math.floor(Math.log10(span / 5))), stp = [1, 2, 5, 10].map(k => k * step0).find(v => span / v <= 6);
     lo = Math.floor(lo / stp) * stp; hi = Math.ceil(hi / stp) * stp;
