@@ -421,12 +421,15 @@
   const CPAL = ['#2f6db5', '#d1782a', '#2e9d6a', '#b8475a', '#7b5cc4', '#8f8a24', '#3a9fb0'];
   function baseDiagram(key) {
     const t = o.baseTab, cs = t.combos, g = o.g, B = g.B, C = P.C, S = o.p.S, D1 = P.D1, D2 = P.D2;
-    const W = 760, L = 70, Rm = 150, T0 = 34, PH = 220, x0 = L, x1 = W - Rm;
+    const L = 70, Rm = 150, T0 = 34, x0 = L;
     // 兩張圖共用相同之 Y 軸範圍與刻度（彎矩、剪力取聯集），X 軸同為 0～B
     let lo = 0, hi = 0; cs.forEach(c => c.dn.forEach(p => { for (const k of ['M', 'V']) { lo = Math.min(lo, p[k]); hi = Math.max(hi, p[k]); } }));
     if (hi - lo < 1e-9) { hi = 1; lo = -1; }
     const span = hi - lo, step0 = Math.pow(10, Math.floor(Math.log10(span / 5))), stp = [1, 2, 5, 10].map(k => k * step0).find(v => span / v <= 6);
     lo = Math.floor(lo / stp) * stp; hi = Math.ceil(hi / stp) * stp;
+    // 方格等比例：Y 軸一格（stp）之長度＝X 軸 1 m 之長度；圖高上限 480，超過則縮窄圖寬
+    const nst = Math.round((hi - lo) / stp); let pxm = 610 / B; if (nst * pxm > 480) pxm = 480 / nst;
+    const PH = nst * pxm, x1 = x0 + pxm * B, W = x1 + Rm;
     const X = x => x0 + (x / B) * (x1 - x0), Y = v => T0 + (hi - v) / (hi - lo) * PH;
     const sy = T0 + PH + 34, sc = (x1 - x0) / B, th = Math.max(14, Math.min(46, (D1 + D2) * sc));
     let svg = `<svg viewBox="0 0 ${W} ${sy + th + 44}" class="draw bdia" role="img" aria-label="${key === 'M' ? '彎矩圖' : '剪力圖'}">`;
